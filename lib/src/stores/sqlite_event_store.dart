@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:sqlite3/sqlite3.dart';
 import '../../event.dart';
 import '../../event_store.dart';
-import '../../lock.dart';
+import '../lock.dart';
 
 /// SQLite implementation of EventStore
 class SqliteEventStore implements EventStore {

@@ -1,7 +1,7 @@
 import 'dart:collection';
 import '../../event.dart';
 import '../../event_store.dart';
-import '../../lock.dart';
+import '../lock.dart';
 
 /// In-memory implementation of EventStore
 class InMemoryEventStore implements EventStore {

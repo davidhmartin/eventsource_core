@@ -46,6 +46,28 @@ class TestEvent implements Event {
         'origin': origin,
       };
 
+  @override
+  void validate() {
+    if (id.isEmpty) throw ArgumentError('Event id cannot be empty');
+    if (aggregateId.isEmpty) throw ArgumentError('Aggregate id cannot be empty');
+    if (eventType.isEmpty) throw ArgumentError('Event type cannot be empty');
+    if (version < 0) throw ArgumentError('Version cannot be negative');
+  }
+
+  @override
+  Event withVersion(int newVersion) {
+    return TestEvent(
+      id: id,
+      aggregateId: aggregateId,
+      eventType: eventType,
+      data: Map<String, dynamic>.from(data),
+      metadata: Map<String, dynamic>.from(metadata),
+      version: newVersion,
+      timestamp: timestamp,
+      origin: origin,
+    );
+  }
+
   /// Create a test event from JSON
   factory TestEvent.fromJson(Map<String, dynamic> json) => TestEvent(
         id: json['id'] as String,

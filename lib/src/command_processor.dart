@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'command.dart';
+import '../command.dart';
 import 'command_queue.dart';
-import 'event_store.dart';
+import '../event_store.dart';
 import 'aggregate_store.dart';
 import 'command_handler.dart';
 
@@ -9,7 +9,7 @@ import 'command_handler.dart';
 class HandlerNotFoundException implements Exception {
   final Type commandType;
   HandlerNotFoundException(this.commandType);
-  
+
   @override
   String toString() => 'No handler found for command type: $commandType';
 }
@@ -19,11 +19,12 @@ class CommandProcessingException implements Exception {
   final String message;
   final dynamic error;
   final StackTrace? stackTrace;
-  
+
   CommandProcessingException(this.message, [this.error, this.stackTrace]);
-  
+
   @override
-  String toString() => 'Command processing failed: $message${error != null ? '\nCaused by: $error' : ''}';
+  String toString() =>
+      'Command processing failed: $message${error != null ? '\nCaused by: $error' : ''}';
 }
 
 /// Processes commands asynchronously with error handling and retries
@@ -32,12 +33,13 @@ class CommandProcessor {
   final AggregateStore _aggregateStore;
   final Map<Type, CommandHandler> _handlers;
   final CommandQueue _queue;
-  
+
   StreamSubscription? _subscription;
   bool _isProcessing = false;
   final _processingCompleter = Completer<void>();
-  
-  CommandProcessor(this._eventStore, this._aggregateStore, this._handlers, this._queue);
+
+  CommandProcessor(
+      this._eventStore, this._aggregateStore, this._handlers, this._queue);
 
   /// Submit a command for processing
   Future<void> submit(Command command) => _queue.enqueue(command);
@@ -45,15 +47,13 @@ class CommandProcessor {
   /// Start processing commands asynchronously
   Future<void> start() async {
     if (_isProcessing) return;
-    
+
     _isProcessing = true;
-    _subscription = _queue.commandStream.listen(
-      (command) => _processWithRetry(command),
-      onError: (error, stackTrace) {
-        print('Error in command stream: $error');
-        print(stackTrace);
-      }
-    );
+    _subscription = _queue.commandStream.listen(_processWithRetry,
+        onError: (error, stackTrace) {
+      print('Error in command stream: $error');
+      print(stackTrace);
+    });
   }
 
   /// Stop processing commands
@@ -77,10 +77,9 @@ class CommandProcessor {
         attempts++;
         if (attempts >= maxRetries) {
           throw CommandProcessingException(
-            'Failed to process command after $maxRetries attempts',
-            e,
-            stackTrace
-          );
+              'Failed to process command after $maxRetries attempts',
+              e,
+              stackTrace);
         }
         // Wait before retrying, with exponential backoff
         await Future.delayed(Duration(milliseconds: 100 * (1 << attempts)));
@@ -94,22 +93,25 @@ class CommandProcessor {
     if (handler == null) {
       throw HandlerNotFoundException(command.runtimeType);
     }
-    
+
     try {
       final aggregate = await _aggregateStore.getAggregate(command.aggregateId);
       if (aggregate == null) {
-        throw CommandProcessingException('Aggregate not found: ${command.aggregateId}');
+        throw CommandProcessingException(
+            'Aggregate not found: ${command.aggregateId}');
       }
-      
+
       final event = handler.handle(command, aggregate);
       if (event != null) {
-        await _eventStore.appendEvents(aggregate.id, [event], aggregate.version);
+        await _eventStore.appendEvents(
+            aggregate.id, [event], aggregate.version);
       }
     } catch (e, stackTrace) {
       if (e is HandlerNotFoundException || e is CommandProcessingException) {
         rethrow;
       }
-      throw CommandProcessingException('Error processing command', e, stackTrace);
+      throw CommandProcessingException(
+          'Error processing command', e, stackTrace);
     }
   }
 

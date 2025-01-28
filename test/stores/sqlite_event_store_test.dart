@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:test/test.dart';
-import 'package:eventsource_core/stores/sqlite_event_store.dart';
+import 'package:eventsource_core/src/stores/sqlite_event_store.dart';
 import '../utils/test_event.dart';
 
 void main() {
@@ -9,7 +9,8 @@ void main() {
 
   setUp(() async {
     dbPath = 'test_${DateTime.now().millisecondsSinceEpoch}.db';
-    store = await SqliteEventStore.create(dbPath, eventFactory: TestEvent.fromJson);
+    store =
+        await SqliteEventStore.create(dbPath, eventFactory: TestEvent.fromJson);
   });
 
   tearDown(() async {

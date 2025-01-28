@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:eventsource_core/stores/memory_snapshot_store.dart';
+import 'package:eventsource_core/src/stores/memory_snapshot_store.dart';
 
 void main() {
   late InMemorySnapshotStore<TestState> store;

@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:sqlite3/sqlite3.dart';
-import '../event.dart';
-import '../event_store.dart';
-import '../lock.dart';
+import '../../event.dart';
+import '../../event_store.dart';
+import '../../lock.dart';
 
 /// SQLite implementation of EventStore
 class SqliteEventStore implements EventStore {
@@ -170,9 +170,10 @@ class SqliteEventStore implements EventStore {
         } catch (_) {
           // Ignore rollback errors during dispose
         }
-        
+
         _db.dispose();
-        await Future.delayed(Duration(milliseconds: 50)); // Allow resources to be released
+        await Future.delayed(
+            Duration(milliseconds: 50)); // Allow resources to be released
       } catch (e) {
         print('Error disposing database: $e');
         rethrow;

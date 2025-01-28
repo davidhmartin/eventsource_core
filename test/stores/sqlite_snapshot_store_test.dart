@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:test/test.dart';
-import 'package:eventsource_core/stores/sqlite_snapshot_store.dart';
+import 'package:eventsource_core/src/stores/sqlite_snapshot_store.dart';
 
 void main() {
   late SqliteSnapshotStore<TestState> store;
@@ -12,7 +12,8 @@ void main() {
       dbPath,
       fromJson: TestState.fromJson,
       toJson: (state) => state.toJson(),
-      defaultTStateValue: TestState('defaultName', 0), // Provide a default TestState instance with required parameters
+      defaultTStateValue: TestState('defaultName',
+          0), // Provide a default TestState instance with required parameters
     );
   });
 

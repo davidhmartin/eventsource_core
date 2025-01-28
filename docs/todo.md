@@ -1,30 +1,26 @@
 # Event Sourcing Framework Development Tasks
 
 ## 1. Core Domain Components
-- [ ] Implement base `Aggregate` class
+- [X] Implement base `Aggregate` class
   - State management
   - Event application logic
   - Version tracking
-- [ ] Complete base `Event` and `Command` interfaces
+- [X] Complete base `Event` and `Command` interfaces
   - Add validation methods
   - Implement serialization support
-- [ ] Create `AggregateStore`
+- [X] Create `AggregateStore`
   - Implement snapshot integration
   - Add event replay functionality
   - Handle aggregate reconstruction
 
 ## 2. Command Processing
-- [ ] Implement `CommandHandler` base class
+- [X] Implement `CommandHandler` base class
   - Add validation infrastructure
   - Error handling patterns
-- [ ] Build `CommandProcessor` with queue
+- [X] Build `CommandProcessor` with queue
   - Command serialization
   - Concurrent command handling
   - Error recovery
-- [ ] Add command validation framework
-  - Business rule validation
-  - State-based validation
-  - Concurrency checks
 
 ## 3. Infrastructure
 - [ ] Additional Event Store Backends

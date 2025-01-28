@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:sqlite3/sqlite3.dart';
-import '../snapshot_store.dart';
-import '../lock.dart';
+import '../../snapshot_store.dart';
+import '../../lock.dart';
 
 /// SQLite implementation of SnapshotStore
 class SqliteSnapshotStore<TState> implements SnapshotStore<TState> {

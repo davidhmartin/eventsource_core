@@ -1,6 +1,6 @@
 import 'dart:collection';
-import '../snapshot_store.dart';
-import '../lock.dart';
+import '../../snapshot_store.dart';
+import '../../lock.dart';
 
 /// In-memory implementation of SnapshotStore
 class InMemorySnapshotStore<TState> implements SnapshotStore<TState> {

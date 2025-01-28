@@ -1,7 +1,7 @@
 import 'package:test/test.dart';
-import 'package:eventsource_core/stores/aggregate_store.dart';
-import 'package:eventsource_core/stores/memory_event_store.dart';
-import 'package:eventsource_core/stores/memory_snapshot_store.dart';
+import 'package:eventsource_core/aggregate_store.dart';
+import 'package:eventsource_core/src/stores/memory_event_store.dart';
+import 'package:eventsource_core/src/stores/memory_snapshot_store.dart';
 import '../core/test_implementations.dart';
 import 'package:eventsource_core/event.dart';
 import 'package:eventsource_core/event_store.dart';
@@ -179,7 +179,8 @@ class MockSnapshotStore implements SnapshotStore<TestState> {
   }
 
   @override
-  Future<void> saveSnapshot(String aggregateId, TestState snapshot, int version) async {
+  Future<void> saveSnapshot(
+      String aggregateId, TestState snapshot, int version) async {
     savedSnapshot = snapshot;
     savedAggregateId = aggregateId;
     savedVersion = version;

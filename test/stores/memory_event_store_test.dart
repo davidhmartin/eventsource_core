@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:eventsource_core/stores/memory_event_store.dart';
+import 'package:eventsource_core/src/stores/memory_event_store.dart';
 import '../utils/test_event.dart';
 
 void main() {

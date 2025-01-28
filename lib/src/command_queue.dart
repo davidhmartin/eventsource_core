@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'command.dart';
+import '../command.dart';
 import 'lock.dart';
 
 /// A thread-safe queue for processing commands asynchronously

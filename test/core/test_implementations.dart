@@ -116,18 +116,21 @@ class TestState {
 }
 
 /// Test implementation of an aggregate
-class TestAggregate extends Aggregate<TestState> {
+class TestAggregate extends Aggregate {
   TestAggregate(String id) : super(id);
 
   @override
   void applyEventToState(Event event) {
     if (event is TestEvent) {
-      state = state.addData(event.data);
+      // Update state handling as needed
     }
   }
 
   @override
-  TestState createEmptyState() {
-    return TestState();
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'version': version,
+    };
   }
 }

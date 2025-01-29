@@ -1,0 +1,16 @@
+name: todo_list
+description: A todo list example using eventsource_core.
+version: 1.0.0
+# repository: https://github.com/my_org/my_repo
+
+environment:
+  sdk: ^3.6.0
+
+# Add regular dependencies here.
+dependencies:
+  eventsource_core:
+    path: ../../
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.24.0

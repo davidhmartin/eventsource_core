@@ -60,7 +60,7 @@ void main() {
       final aggregate = await store.getAggregate('test-1');
       expect(aggregate, isNotNull);
       expect(aggregate!.version, equals(2));
-      expect(aggregate.state.appliedData, equals(['data-1', 'data-2']));
+      expect(aggregate.appliedData, equals(['data-1', 'data-2']));
     });
 
     test('loads aggregate from snapshot and events', () async {
@@ -83,7 +83,7 @@ void main() {
       expect(aggregate, isNotNull);
       expect(aggregate!.version, equals(2));
       expect(
-        aggregate.state.appliedData,
+        aggregate.appliedData,
         equals(['existing', 'new-data']),
       );
     });

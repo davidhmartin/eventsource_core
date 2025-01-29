@@ -3,7 +3,7 @@ import '../command.dart';
 import 'command_queue.dart';
 import '../event_store.dart';
 import 'aggregate_store.dart';
-import 'command_handler.dart';
+import '../command_handler.dart';
 
 /// Exception thrown when a command handler is not found
 class HandlerNotFoundException implements Exception {

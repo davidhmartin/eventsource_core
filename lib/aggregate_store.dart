@@ -8,25 +8,24 @@ import 'snapshot_store.dart';
 /// The aggregate store efficiently manages aggregates using a combination of
 /// snapshots and events. It coordinates between the event store and snapshot
 /// store to provide optimal performance when loading aggregates.
-abstract class AggregateStore<TAggregate extends Aggregate<TState>, TState> {
+abstract class AggregateStore {
   /// Get an aggregate by its ID
   ///
   /// Returns null if the aggregate doesn't exist
-  Future<TAggregate?> getAggregate(String id);
+  Future<Aggregate?> getAggregate(String id);
 
   /// Save any uncommitted events for the aggregate
   ///
   /// This will append the events to the event store and optionally
   /// create a new snapshot if the snapshot frequency is met.
-  Future<void> save(TAggregate aggregate);
+  Future<void> save(Aggregate aggregate);
 }
 
 /// Default implementation of [AggregateStore]
-class DefaultAggregateStore<TAggregate extends Aggregate<TState>, TState>
-    implements AggregateStore<TAggregate, TState> {
+class DefaultAggregateStore implements AggregateStore {
   final EventStore _eventStore;
-  final SnapshotStore<TState>? _snapshotStore;
-  final TAggregate Function(String) _aggregateFactory;
+  final SnapshotStore? _snapshotStore;
+  final Aggregate Function(String) _aggregateFactory;
   final int _snapshotFrequency;
 
   /// Creates a new aggregate store
@@ -38,15 +37,15 @@ class DefaultAggregateStore<TAggregate extends Aggregate<TState>, TState>
   DefaultAggregateStore(
     this._eventStore,
     this._aggregateFactory, {
-    SnapshotStore<TState>? snapshotStore,
+    SnapshotStore? snapshotStore,
     int snapshotFrequency = 100,
   })  : _snapshotStore = snapshotStore,
         _snapshotFrequency = snapshotFrequency;
 
   @override
-  Future<TAggregate?> getAggregate(String id) async {
+  Future<Aggregate?> getAggregate(String id) async {
     // Try to get the latest snapshot if we have a snapshot store
-    TAggregate? aggregate;
+    Aggregate? aggregate;
     int fromVersion = 0;
 
     if (_snapshotStore != null) {
@@ -74,7 +73,7 @@ class DefaultAggregateStore<TAggregate extends Aggregate<TState>, TState>
   }
 
   @override
-  Future<void> save(TAggregate aggregate) async {
+  Future<void> save(Aggregate aggregate) async {
     final events = aggregate.uncommittedEvents;
     if (events.isEmpty) {
       return;

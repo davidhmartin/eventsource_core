@@ -1,6 +1,6 @@
-import '../event.dart';
-import '../aggregate.dart';
-import '../command.dart';
+import 'event.dart';
+import 'aggregate.dart';
+import 'command.dart';
 
 /// Base interface for command handlers
 abstract class CommandHandler<TCommand extends Command,

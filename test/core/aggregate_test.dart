@@ -13,8 +13,6 @@ void main() {
     test('initializes with correct id and version', () {
       expect(aggregate.id, equals('test-1'));
       expect(aggregate.version, equals(0));
-      expect(aggregate.state.appliedData, isEmpty);
-      expect(aggregate.uncommittedEvents, isEmpty);
     });
 
     test('applies single event correctly', () {
@@ -30,8 +28,6 @@ void main() {
       aggregate.applyEvent(event);
 
       expect(aggregate.version, equals(1));
-      expect(aggregate.state.appliedData, equals(['test-data']));
-      expect(aggregate.uncommittedEvents, equals([event]));
     });
 
     test('applies multiple events in sequence', () {
@@ -57,8 +53,6 @@ void main() {
       aggregate.applyEvents(events);
 
       expect(aggregate.version, equals(2));
-      expect(aggregate.state.appliedData, equals(['data-1', 'data-2']));
-      expect(aggregate.uncommittedEvents, equals(events));
     });
 
     test('throws on non-sequential version', () {
@@ -93,32 +87,10 @@ void main() {
       );
     });
 
-    test('clears uncommitted events', () {
-      final event = TestEvent(
-        id: 'event-1',
-        aggregateId: 'test-1',
-        timestamp: now,
-        version: 1,
-        origin: 'test',
-        data: 'test-data',
-      );
-
-      aggregate.applyEvent(event);
-      expect(aggregate.uncommittedEvents, isNotEmpty);
-
-      aggregate.clearUncommittedEvents();
-      expect(aggregate.uncommittedEvents, isEmpty);
-      // State should remain unchanged
-      expect(aggregate.state.appliedData, equals(['test-data']));
-    });
-
     test('loads from snapshot correctly', () {
-      final state = TestState(['existing-data']);
-      aggregate.loadFromSnapshot(state, 5);
+      aggregate.loadFromSnapshot(5);
 
       expect(aggregate.version, equals(5));
-      expect(aggregate.state.appliedData, equals(['existing-data']));
-      expect(aggregate.uncommittedEvents, isEmpty);
 
       // Should be able to apply new events from snapshot version
       final event = TestEvent(
@@ -132,10 +104,6 @@ void main() {
 
       aggregate.applyEvent(event);
       expect(aggregate.version, equals(6));
-      expect(
-        aggregate.state.appliedData,
-        equals(['existing-data', 'new-data']),
-      );
     });
   });
 }

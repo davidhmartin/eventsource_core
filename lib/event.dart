@@ -1,5 +1,4 @@
 import 'package:meta/meta.dart';
-
 import 'typedefs.dart';
 
 /// Base class for all events
@@ -7,8 +6,8 @@ import 'typedefs.dart';
 /// Events are immutable records of facts that have occurred in the system.
 /// They represent state transitions and are the source of truth for the system's state.
 abstract class Event {
-  final String _id;
-  final String _aggregateId;
+  final ID _id;
+  final ID _aggregateId;
   final DateTime _timestamp;
   final int _version;
   final String _origin;
@@ -27,8 +26,8 @@ abstract class Event {
   /// Protected constructor for use by fromJson implementations
   @protected
   Event.fromJsonBase(JsonMap json)
-      : _id = json['id'] as String,
-        _aggregateId = json['aggregateId'] as String,
+      : _id = idFromString(json['id'] as String),
+        _aggregateId = idFromString(json['aggregateId'] as String),
         _timestamp = DateTime.parse(json['timestamp'] as String),
         _version = json['version'] as int,
         _origin = json['origin'] as String {
@@ -37,10 +36,10 @@ abstract class Event {
   }
 
   /// Unique identifier for the event
-  String get id => _id;
+  ID get id => _id;
 
   /// ID of the aggregate this event belongs to
-  String get aggregateId => _aggregateId;
+  ID get aggregateId => _aggregateId;
 
   /// When the event occurred
   DateTime get timestamp => _timestamp;
@@ -55,7 +54,16 @@ abstract class Event {
   String get type;
 
   /// Convert event to JSON for persistence
-  JsonMap toJson();
+  JsonMap toJson() {
+    return {
+      'id': _id.toString(),
+      'aggregateId': _aggregateId.toString(),
+      'timestamp': _timestamp.toIso8601String(),
+      'version': _version,
+      'origin': _origin,
+      'type': type,
+    };
+  }
 
   /// Create an Event from a JSON map
   /// The JSON must include a 'type' field that matches a registered event type
@@ -99,21 +107,10 @@ abstract class Event {
 
   /// Validate that the event is well-formed
   /// Throws [ArgumentError] if validation fails
+  /// @deprecated
   void validate() {
-    if (id.isEmpty) {
-      throw ArgumentError('Event ID cannot be empty');
-    }
-    if (aggregateId.isEmpty) {
-      throw ArgumentError('Aggregate ID cannot be empty');
-    }
     if (version < 1) {
       throw ArgumentError('Version must be greater than 0');
-    }
-    if (origin.isEmpty) {
-      throw ArgumentError('Origin cannot be empty');
-    }
-    if (type.isEmpty) {
-      throw ArgumentError('Event type cannot be empty');
     }
   }
 

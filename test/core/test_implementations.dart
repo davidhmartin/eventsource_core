@@ -68,12 +68,10 @@ class TestCommand extends Command {
 
   TestCommand(
     super._aggregateId,
-    super._userId,
     super._timestamp,
     super._origin,
     super._type, {
     required this.aggregateId,
-    required this.userId,
     required this.timestamp,
     required this.origin,
     required this.data,
@@ -82,7 +80,6 @@ class TestCommand extends Command {
   @override
   Map<String, dynamic> toJson() => {
         'aggregateId': aggregateId,
-        'userId': userId,
         'timestamp': timestamp.toIso8601String(),
         'origin': origin,
         'commandType': commandType,

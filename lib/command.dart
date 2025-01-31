@@ -10,16 +10,14 @@ export 'src/command_lifecycle.dart';
 /// requests for state changes. Unlike events, commands are not persisted and
 /// may be rejected.
 abstract class Command {
-  final String _aggregateId;
+  final ID _aggregateId;
   final DateTime _timestamp;
   final String _origin;
-  final String _type;
 
   Command(
     this._aggregateId,
     this._timestamp,
     this._origin,
-    this._type,
   ) {
     validate();
   }
@@ -27,15 +25,14 @@ abstract class Command {
   /// Protected constructor for use by fromJson implementations
   @protected
   Command.fromJsonBase(JsonMap json)
-      : _aggregateId = json['aggregateId'] as String,
+      : _aggregateId = idFromString(json['aggregateId'] as String),
         _timestamp = DateTime.parse(json['timestamp'] as String),
-        _origin = json['origin'] as String,
-        _type = json['type'] as String {
+        _origin = json['origin'] as String {
     validate();
   }
 
   /// ID of the aggregate this command belongs to
-  String get aggregateId => _aggregateId;
+  ID get aggregateId => _aggregateId;
 
   /// When the command was issued
   DateTime get timestamp => _timestamp;
@@ -44,10 +41,16 @@ abstract class Command {
   String get origin => _origin;
 
   /// Type identifier for this command
-  String get type => _type;
+  String get type;
 
   /// Convert command to JSON for logging or debugging
-  JsonMap toJson();
+  JsonMap toJson() {
+    return {
+      'aggregateId': _aggregateId.toString(),
+      'timestamp': _timestamp.toIso8601String(),
+      'origin': _origin,
+    };
+  }
 
   /// Create a Command from a JSON map
   /// The JSON must include a 'type' field that matches a registered command type
@@ -92,12 +95,6 @@ abstract class Command {
   /// Validate that the command is well-formed
   /// Throws [ArgumentError] if validation fails
   void validate() {
-    if (aggregateId.isEmpty) {
-      throw ArgumentError('Aggregate ID cannot be empty');
-    }
-    if (origin.isEmpty) {
-      throw ArgumentError('Origin cannot be empty');
-    }
     if (type.isEmpty) {
       throw ArgumentError('Command type cannot be empty');
     }

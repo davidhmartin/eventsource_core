@@ -1,15 +1,16 @@
 import '../event.dart';
+import '../typedefs.dart';
 
 /// Interface for event storage
 abstract class EventStore {
   /// Append events to the store
   Future<void> appendEvents(
-      String aggregateId, List<Event> events, int expectedVersion);
+      ID aggregateId, List<Event> events, int expectedVersion);
 
   /// Retrieves a stream of events for a specific aggregate.
-  /// 
+  ///
   /// Returns events as a [Stream] in the order they were appended to the store.
-  /// 
+  ///
   /// Parameters:
   /// - [aggregateId] The unique identifier of the aggregate to fetch events for
   /// - [fromVersion] Optional starting version (inclusive) to retrieve events from.
@@ -18,7 +19,7 @@ abstract class EventStore {
   /// - [origin] Optional system or component identifier to filter events by their source
   /// - [filter] Optional predicate function to filter events. When provided, only
   ///   events that satisfy the predicate will be included in the stream
-  /// 
+  ///
   /// Example:
   /// ```dart
   /// final events = await eventStore.getEvents(
@@ -28,7 +29,7 @@ abstract class EventStore {
   ///   filter: (event) => event.type == 'PaymentProcessed'
   /// ).toList();
   /// ```
-  Stream<Event> getEvents(String aggregateId,
+  Stream<Event> getEvents(ID aggregateId,
       {int? fromVersion,
       int? toVersion,
       String? origin,

@@ -1,4 +1,3 @@
-/// Efficiently retrieves aggregates using snapshots and events
 import 'event_store.dart';
 import '../aggregate.dart';
 import 'stores/null_snapshot_store.dart';
@@ -20,7 +19,7 @@ abstract class AggregateStore<TAggregate extends Aggregate> {
       : _snapshotStore = snapshotStore ?? NullSnapshotStore<TAggregate>();
 
   /// Get an aggregate by its ID, using snapshots if available
-  Future<TAggregate> getAggregate(String id, {int? toVersion}) async {
+  Future<TAggregate> getAggregate(ID id, {int? toVersion}) async {
     // Try to get the latest snapshot if we have a snapshot store
     TAggregate? agg = await _snapshotStore.getLatestSnapshot(id);
     TAggregate aggregate = agg ?? _createEmptyAggregate(id);
@@ -65,5 +64,5 @@ abstract class SnapshotStore<TAggregate extends Aggregate> {
   Future<void> saveSnapshot(TAggregate aggregate);
 
   /// Get latest snapshot
-  Future<TAggregate?> getLatestSnapshot(String aggregateId);
+  Future<TAggregate?> getLatestSnapshot(ID aggregateId);
 }

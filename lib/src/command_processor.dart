@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../command.dart';
 import '../event.dart';
+import '../typedefs.dart';
 import 'command_queue.dart';
 import 'event_store.dart';
 import 'aggregate_store.dart';
@@ -20,7 +21,7 @@ class HandlerNotFoundException implements Exception {
 
 /// Exception thrown when an aggregate is not found
 class AggregateNotFoundException implements Exception {
-  final String aggregateId;
+  final ID aggregateId;
 
   AggregateNotFoundException(this.aggregateId);
 

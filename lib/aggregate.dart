@@ -4,14 +4,15 @@ import 'package:meta/meta.dart';
 import 'typedefs.dart';
 
 /// Factory function for creating a new empty aggregate.
-typedef AggregateFactory<TAggregate extends Aggregate> = TAggregate Function(String id);
+typedef AggregateFactory<TAggregate extends Aggregate> = TAggregate Function(
+    ID id);
 
 /// Base class for all aggregates
 ///
 /// An aggregate is the consistency boundary for a group of domain objects
 /// that should be treated as a single unit for data changes.
 abstract class Aggregate {
-  String _id;
+  ID _id;
   int _version = 0;
 
   /// Creates a new aggregate with the given ID
@@ -24,11 +25,11 @@ abstract class Aggregate {
   /// ```
   @protected
   Aggregate.fromJsonBase(JsonMap json)
-      : _id = json['id'] as String,
+      : _id = idFromString(json['id'] as String),
         _version = json['version'] as int;
 
   /// ID of this aggregate
-  String get id => _id;
+  ID get id => _id;
 
   /// Current version (last applied event sequence number)
   int get version => _version;
@@ -38,7 +39,13 @@ abstract class Aggregate {
   String get type;
 
   /// Convert event to JSON for persistence
-  JsonMap toJson();
+  JsonMap toJson() {
+    return {
+      'id': _id.toString(),
+      'version': _version,
+      'type': type,
+    };
+  }
 
   /// Create an Aggregate from a JSON map
   /// The JSON must include a 'type' field that matches an aggregate type
@@ -134,7 +141,7 @@ class UserAggregate extends Aggregate {
   final String name;
   final String email;
 
-  UserAggregate(String id, this.name, this.email) : super(id);
+  UserAggregate(ID id, this.name, this.email) : super(id);
 
   @override
   String get type => 'UserAggregate';
@@ -153,7 +160,7 @@ class UserAggregate extends Aggregate {
   @override
   JsonMap toJson() => {
         'type': type,
-        'id': id,
+        'id': id.toString(),
         'version': version,
         'name': name,
         'email': email,

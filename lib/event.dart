@@ -54,8 +54,9 @@ abstract class Event {
   String get type;
 
   /// Convert event to JSON for persistence
+  @nonVirtual
   JsonMap toJson() {
-    return {
+    JsonMap map = {
       'id': _id.toString(),
       'aggregateId': _aggregateId.toString(),
       'timestamp': _timestamp.toIso8601String(),
@@ -63,6 +64,8 @@ abstract class Event {
       'origin': _origin,
       'type': type,
     };
+    serializeState(map);
+    return map;
   }
 
   /// Create an Event from a JSON map
@@ -78,8 +81,16 @@ abstract class Event {
       throw ArgumentError('Unknown event type: $type');
     }
 
-    return factory(json);
+    Event event = factory(json);
+    event.deserializeState(json);
+    return event;
   }
+
+  // Called by toJson. Subclasses override to add event state to the json map.
+  void serializeState(JsonMap json) {}
+
+  // Called by fromJson. Subclasses override to set event state from the json map.
+  void deserializeState(JsonMap json) {}
 
   /// Register a factory for creating events of a specific type
   ///

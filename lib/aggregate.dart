@@ -39,12 +39,15 @@ abstract class Aggregate {
   String get type;
 
   /// Convert event to JSON for persistence
+  @nonVirtual
   JsonMap toJson() {
-    return {
+    JsonMap map = {
       'id': _id.toString(),
       'version': _version,
       'type': type,
     };
+    serializeState(map);
+    return map;
   }
 
   /// Create an Aggregate from a JSON map
@@ -60,8 +63,16 @@ abstract class Aggregate {
       throw ArgumentError('Unknown aggregate type: $type');
     }
 
-    return factory(json);
+    Aggregate aggregate = factory(json);
+    aggregate.deserializeState(json);
+    return aggregate;
   }
+
+  // Called by toJson. Subclasses override to add aggregate state to the json map.
+  void serializeState(JsonMap json) {}
+
+  // Called by fromJson. Subclasses override to set aggregate state from the json map.
+  void deserializeState(JsonMap json) {}
 
   /// Register a factory for creating aggregates of a specific type
   ///

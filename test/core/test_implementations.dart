@@ -1,14 +1,15 @@
 import 'package:eventsource_core/aggregate.dart';
 import 'package:eventsource_core/command.dart';
 import 'package:eventsource_core/event.dart';
+import 'package:eventsource_core/typedefs.dart';
 
 /// Test implementation of an event
 class TestEvent extends Event {
-  final String data;
+  String data;
 
   TestEvent({
-    required String id,
-    required String aggregateId,
+    required ID id,
+    required ID aggregateId,
     required DateTime timestamp,
     required int version,
     required String origin,
@@ -16,15 +17,14 @@ class TestEvent extends Event {
   }) : super(id, aggregateId, timestamp, version, origin);
 
   @override
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'aggregateId': aggregateId,
-        'timestamp': timestamp.toIso8601String(),
-        'version': version,
-        'origin': origin,
-        'type': type,
-        'data': data,
-      };
+  void serializeState(JsonMap jsonMap) {
+    jsonMap['data'] = data;
+  }
+
+  @override
+  void deserializeState(JsonMap jsonMap) {
+    data = jsonMap['data'] as String;
+  }
 
   @override
   void validate() {
@@ -49,21 +49,6 @@ class TestEvent extends Event {
 
 /// Test implementation of a command
 class TestCommand extends Command {
-  @override
-  final String aggregateId;
-
-  @override
-  final String userId;
-
-  @override
-  final DateTime timestamp;
-
-  @override
-  final String origin;
-
-  @override
-  final String commandType;
-
   final String data;
 
   TestCommand(

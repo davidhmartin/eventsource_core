@@ -22,15 +22,6 @@ abstract class Command {
     validate();
   }
 
-  /// Protected constructor for use by fromJson implementations
-  @protected
-  Command.fromJsonBase(JsonMap json)
-      : _aggregateId = idFromString(json['aggregateId'] as String),
-        _timestamp = DateTime.parse(json['timestamp'] as String),
-        _origin = json['origin'] as String {
-    validate();
-  }
-
   /// ID of the aggregate this command belongs to
   ID get aggregateId => _aggregateId;
 
@@ -43,13 +34,16 @@ abstract class Command {
   /// Type identifier for this command
   String get type;
 
-  /// Convert command to JSON for logging or debugging
+  @nonVirtual
   JsonMap toJson() {
-    return {
+    JsonMap map = {
       'aggregateId': _aggregateId.toString(),
       'timestamp': _timestamp.toIso8601String(),
       'origin': _origin,
+      'type': type,
     };
+    serializeState(map);
+    return map;
   }
 
   /// Create a Command from a JSON map
@@ -65,8 +59,16 @@ abstract class Command {
       throw ArgumentError('Unknown command type: $type');
     }
 
-    return factory(json);
+    Command command = factory(json);
+    command.deserializeState(json);
+    return command;
   }
+
+  // Called by toJson. Subclasses override to add command state to the json map.
+  void serializeState(JsonMap json) {}
+
+  // Called by fromJson. Subclasses override to set command state from the json map.
+  void deserializeState(JsonMap json) {}
 
   /// Register a factory for creating commands of a specific type
   ///

@@ -1,4 +1,5 @@
 import 'package:eventsource_core/src/aggregate_store.dart';
+import 'package:eventsource_core/typedefs.dart';
 
 import '../../aggregate.dart';
 
@@ -10,7 +11,7 @@ class NullSnapshotStore<TAggregate extends Aggregate>
   }
 
   @override
-  Future<TAggregate?> getLatestSnapshot(String aggregateId) async {
+  Future<TAggregate?> getLatestSnapshot(ID aggregateId) async {
     return Future.value(null);
   }
 }

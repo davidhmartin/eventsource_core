@@ -7,12 +7,12 @@ import '../lock.dart';
 
 /// In-memory implementation of EventStore
 class InMemoryEventStore implements EventStore {
-  final _events = HashMap<String, List<Event>>();
+  final _events = HashMap<ID, List<Event>>();
   final _lock = Lock();
 
   @override
   Future<void> appendEvents(
-      String aggregateId, List<Event> events, int expectedVersion) async {
+      ID aggregateId, List<Event> events, int expectedVersion) async {
     await _lock.synchronized(() {
       final existingEvents = _events[aggregateId] ?? [];
       if (existingEvents.isEmpty) {
@@ -31,7 +31,7 @@ class InMemoryEventStore implements EventStore {
   }
 
   @override
-  Stream<Event> getEvents(String aggregateId,
+  Stream<Event> getEvents(ID aggregateId,
       {int? fromVersion,
       int? toVersion,
       String? origin,

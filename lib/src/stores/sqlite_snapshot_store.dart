@@ -26,7 +26,7 @@ class SqliteSnapshotStore<TAggregate extends Aggregate>
   }
 
   @override
-  Future<TAggregate?> getLatestSnapshot(String aggregateId) async {
+  Future<TAggregate?> getLatestSnapshot(ID aggregateId) async {
     return _lock.synchronized(() {
       final result = _db.select(
         'SELECT state, version FROM snapshots WHERE aggregate_id = ?',

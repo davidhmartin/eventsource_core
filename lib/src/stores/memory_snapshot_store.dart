@@ -9,7 +9,7 @@ import '../lock.dart';
 /// In-memory implementation of SnapshotStore
 class InMemorySnapshotStore<TAggregate extends Aggregate>
     implements SnapshotStore<TAggregate> {
-  final _snapshots = HashMap<String, JsonMap>();
+  final _snapshots = HashMap<ID, JsonMap>();
   final _lock = Lock();
 
   @override
@@ -20,7 +20,7 @@ class InMemorySnapshotStore<TAggregate extends Aggregate>
   }
 
   @override
-  Future<TAggregate?> getLatestSnapshot(String aggregateId) async {
+  Future<TAggregate?> getLatestSnapshot(ID aggregateId) async {
     return _lock.synchronized(() async {
       final json = _snapshots[aggregateId];
       if (json != null) {

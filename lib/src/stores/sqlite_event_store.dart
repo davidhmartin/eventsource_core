@@ -42,7 +42,7 @@ class SqliteEventStore implements EventStore {
 
   @override
   Future<void> appendEvents(
-      String aggregateId, List<Event> events, int expectedVersion) async {
+      ID aggregateId, List<Event> events, int expectedVersion) async {
     return _lock.synchronized(() async {
       var inTransaction = false;
       try {
@@ -88,7 +88,7 @@ class SqliteEventStore implements EventStore {
   }
 
   @override
-  Stream<Event> getEvents(String aggregateId,
+  Stream<Event> getEvents(ID aggregateId,
       {int? fromVersion,
       int? toVersion,
       String? origin,
@@ -118,12 +118,12 @@ class SqliteEventStore implements EventStore {
     final stmt = _db.prepare(query);
     try {
       final results = stmt.select(params);
-      
+
       for (final row in results) {
         if (_eventFactory == null) {
           throw StateError('No event factory provided to deserialize events');
         }
-        
+
         final event = _eventFactory({
           'id': row['id'] as String,
           'aggregateId': row['aggregate_id'] as String,
@@ -131,10 +131,11 @@ class SqliteEventStore implements EventStore {
           'data': jsonDecode(row['data'] as String),
           'metadata': jsonDecode(row['metadata'] as String),
           'version': row['version'] as int,
-          'timestamp': DateTime.fromMillisecondsSinceEpoch(row['timestamp'] as int),
+          'timestamp':
+              DateTime.fromMillisecondsSinceEpoch(row['timestamp'] as int),
           'origin': row['origin'] as String,
         });
-        
+
         if (filter == null || filter(event)) {
           yield event;
         }
@@ -144,7 +145,7 @@ class SqliteEventStore implements EventStore {
     }
   }
 
-  int _getCurrentVersion(String aggregateId) {
+  int _getCurrentVersion(ID aggregateId) {
     try {
       final result = _db.select(
         'SELECT COUNT(*) as count FROM events WHERE aggregate_id = ?',

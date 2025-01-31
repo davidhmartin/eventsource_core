@@ -4,34 +4,16 @@ import 'package:eventsource_core/event.dart';
 
 /// Test implementation of an event
 class TestEvent extends Event {
-  @override
-  final String id;
-
-  @override
-  final String aggregateId;
-
-  @override
-  final DateTime timestamp;
-
-  @override
-  final int version;
-
-  @override
-  final String origin;
-
-  @override
-  final String eventType;
-
   final String data;
 
   TestEvent({
-    required this.id,
-    required this.aggregateId,
-    required this.timestamp,
-    required this.version,
-    required this.origin,
+    required String id,
+    required String aggregateId,
+    required DateTime timestamp,
+    required int version,
+    required String origin,
     required this.data,
-  }) : eventType = 'TestEvent';
+  }) : super(id, aggregateId, timestamp, version, origin);
 
   @override
   Map<String, dynamic> toJson() => {
@@ -40,7 +22,7 @@ class TestEvent extends Event {
         'timestamp': timestamp.toIso8601String(),
         'version': version,
         'origin': origin,
-        'eventType': eventType,
+        'type': type,
         'data': data,
       };
 
@@ -62,10 +44,7 @@ class TestEvent extends Event {
   }
 
   @override
-  String get streamId => aggregateId;
-
-  @override
-  String get streamType => 'TestStream';
+  String get type => 'TestEvent';
 }
 
 /// Test implementation of a command
@@ -87,7 +66,12 @@ class TestCommand extends Command {
 
   final String data;
 
-  TestCommand({
+  TestCommand(
+    super._aggregateId,
+    super._userId,
+    super._timestamp,
+    super._origin,
+    super._type, {
     required this.aggregateId,
     required this.userId,
     required this.timestamp,
@@ -104,6 +88,18 @@ class TestCommand extends Command {
         'commandType': commandType,
         'data': data,
       };
+
+  @override
+  Event handle(Aggregate aggregate) {
+    return TestEvent(
+      id: aggregate.id,
+      aggregateId: aggregateId,
+      timestamp: timestamp,
+      version: 1,
+      origin: origin,
+      data: data,
+    );
+  }
 }
 
 /// Test implementation of an aggregate state
@@ -133,4 +129,7 @@ class TestAggregate extends Aggregate {
       'version': version,
     };
   }
+
+  @override
+  String get type => 'TestAggregate';
 }

@@ -1,11 +1,11 @@
 import 'package:test/test.dart';
-import 'package:eventsource_core/aggregate_store.dart';
+import 'package:eventsource_core/src/aggregate_store.dart';
 import 'package:eventsource_core/src/stores/memory_event_store.dart';
 import 'package:eventsource_core/src/stores/memory_snapshot_store.dart';
 import '../core/test_implementations.dart';
 import 'package:eventsource_core/event.dart';
-import 'package:eventsource_core/event_store.dart';
-import 'package:eventsource_core/snapshot_store.dart';
+import 'package:eventsource_core/src/event_store.dart';
+import 'package:eventsource_core/src/snapshot_store.dart';
 
 void main() {
   group('DefaultAggregateStore', () {

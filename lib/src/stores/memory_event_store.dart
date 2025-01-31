@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:collection';
 import '../../event.dart';
-import '../../event_store.dart';
+import '../../typedefs.dart';
+import '../event_store.dart';
 import '../lock.dart';
 
 /// In-memory implementation of EventStore
@@ -11,39 +13,46 @@ class InMemoryEventStore implements EventStore {
   @override
   Future<void> appendEvents(
       String aggregateId, List<Event> events, int expectedVersion) async {
-    return _lock.synchronized(() async {
+    await _lock.synchronized(() {
       final existingEvents = _events[aggregateId] ?? [];
-
-      // Version check
-      if (existingEvents.length != expectedVersion) {
-        throw ConcurrencyException(
-            'Expected version $expectedVersion but found ${existingEvents.length}');
+      if (existingEvents.isEmpty) {
+        _events[aggregateId] =
+            events.toList(); // Create new list if none exists
+      } else {
+        // Version check
+        if (existingEvents.length != expectedVersion) {
+          throw ConcurrencyException(
+              'Expected version $expectedVersion but found ${existingEvents.length}');
+        }
+        existingEvents.addAll(events); // Append to existing list
       }
-
-      _events[aggregateId] = [...existingEvents, ...events];
+      return Future.value(); // Explicit return for the synchronized callback
     });
   }
 
   @override
-  Future<List<Event>> getEvents(String aggregateId,
-      {int? fromVersion, String? origin, bool Function(Event)? filter}) async {
-    return _lock.synchronized(() async {
-      var events = _events[aggregateId] ?? [];
-
-      if (fromVersion != null) {
-        events = events.where((e) => e.version >= fromVersion).toList();
-      }
-
-      if (origin != null) {
-        events = events.where((e) => e.origin == origin).toList();
-      }
-
-      if (filter != null) {
-        events = events.where(filter).toList();
-      }
-
-      return events;
+  Stream<Event> getEvents(String aggregateId,
+      {int? fromVersion,
+      int? toVersion,
+      String? origin,
+      bool Function(Event)? filter}) async* {
+    List<Event> events = await _lock.synchronized(() {
+      List<Event>? events = _events[aggregateId];
+      events ??= [];
+      return Future.value(List.from(events));
     });
+
+    int from = fromVersion ?? 0;
+    int to = toVersion ?? MAX_INT;
+    for (final Event e in events) {
+      if (e.version < from ||
+          e.version > to ||
+          (origin != null && e.origin != origin) ||
+          (filter != null && !filter(e))) {
+        continue;
+      }
+      yield e;
+    }
   }
 }
 
@@ -51,7 +60,6 @@ class InMemoryEventStore implements EventStore {
 class ConcurrencyException implements Exception {
   final String message;
   ConcurrencyException(this.message);
-
   @override
-  String toString() => 'ConcurrencyException: $message';
+  String toString() => message;
 }

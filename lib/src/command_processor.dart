@@ -1,123 +1,144 @@
 import 'dart:async';
+
 import '../command.dart';
+import '../event.dart';
 import 'command_queue.dart';
-import '../event_store.dart';
+import 'event_store.dart';
 import 'aggregate_store.dart';
-import '../command_handler.dart';
+import 'command_lifecycle.dart';
+import 'command_lifecycle_manager.dart';
 
 /// Exception thrown when a command handler is not found
 class HandlerNotFoundException implements Exception {
   final Type commandType;
+
   HandlerNotFoundException(this.commandType);
 
   @override
   String toString() => 'No handler found for command type: $commandType';
 }
 
-/// Exception thrown when command processing fails
-class CommandProcessingException implements Exception {
-  final String message;
-  final dynamic error;
-  final StackTrace? stackTrace;
+/// Exception thrown when an aggregate is not found
+class AggregateNotFoundException implements Exception {
+  final String aggregateId;
 
-  CommandProcessingException(this.message, [this.error, this.stackTrace]);
+  AggregateNotFoundException(this.aggregateId);
 
   @override
-  String toString() =>
-      'Command processing failed: $message${error != null ? '\nCaused by: $error' : ''}';
+  String toString() => 'Aggregate not found: $aggregateId';
 }
 
-/// Processes commands asynchronously with error handling and retries
+/// Processes commands and maintains command state
 class CommandProcessor {
   final EventStore _eventStore;
   final AggregateStore _aggregateStore;
-  final Map<Type, CommandHandler> _handlers;
   final CommandQueue _queue;
+  final CommandLifecycleRegistry _lifecycleRegistry;
 
   StreamSubscription? _subscription;
   bool _isProcessing = false;
   final _processingCompleter = Completer<void>();
 
   CommandProcessor(
-      this._eventStore, this._aggregateStore, this._handlers, this._queue);
+    this._eventStore,
+    this._aggregateStore,
+    this._queue,
+  ) : _lifecycleRegistry = CommandLifecycleRegistry();
 
   /// Submit a command for processing
   Future<void> submit(Command command) => _queue.enqueue(command);
 
+  /// Publish a command. This is called by the application to submit a
+  /// command to the system. The command will be processed asynchronously.
+  ///
+  /// Returns a stream of [CommandLifecycleEvent]s that can be used to track
+  /// the progress of command processing. The stream will emit events in the
+  /// following order:
+  /// 1. [CommandPublished] - When the command is initially received
+  /// 2. [CommandHandled] - When command handling is complete
+  /// 3. [EventPublished] - When the generated event is stored
+  /// 4. [ReadModelUpdated] - When the read model is updated
+  ///
+  /// If an error occurs at any point, a [CommandFailed] event will be emitted
+  /// and the stream will complete.
+  Stream<CommandLifecycleEvent> publish(Command command) {
+    final commandId = DateTime.now().toIso8601String(); // Simple ID generation
+    final manager = _lifecycleRegistry.getManager(commandId, command);
+
+    // Start processing the command
+    submit(command).then((_) {
+      // Command completed successfully
+    }).catchError((Object error, StackTrace stackTrace) {
+      manager.notifyFailed(error, stackTrace);
+      _lifecycleRegistry.removeManager(commandId);
+    });
+
+    // Return the lifecycle event stream
+    return manager.stream;
+  }
+
   /// Start processing commands asynchronously
   Future<void> start() async {
     if (_isProcessing) return;
-
     _isProcessing = true;
-    _subscription = _queue.commandStream.listen(_processWithRetry,
-        onError: (error, stackTrace) {
-      print('Error in command stream: $error');
-      print(stackTrace);
-    });
+
+    _subscription = _queue.commandStream.listen(
+      (command) => _process(command).onError((error, stackTrace) {
+        // Log error but continue processing
+        print('Error processing command: $error\n$stackTrace');
+      }),
+      onError: (Object error) {
+        print('Error in command stream: $error');
+        _processingCompleter.completeError(error);
+      },
+      onDone: () {
+        _isProcessing = false;
+        _processingCompleter.complete();
+      },
+    );
   }
 
   /// Stop processing commands
   Future<void> stop() async {
-    _isProcessing = false;
+    if (!_isProcessing) return;
     await _subscription?.cancel();
     _subscription = null;
-    if (!_processingCompleter.isCompleted) {
-      _processingCompleter.complete();
-    }
+    await _processingCompleter.future;
   }
 
-  /// Process a command with retries on transient failures
-  Future<void> _processWithRetry(Command command, {int maxRetries = 3}) async {
-    int attempts = 0;
-    while (attempts < maxRetries) {
-      try {
-        await _process(command);
-        return;
-      } catch (e, stackTrace) {
-        attempts++;
-        if (attempts >= maxRetries) {
-          throw CommandProcessingException(
-              'Failed to process command after $maxRetries attempts',
-              e,
-              stackTrace);
-        }
-        // Wait before retrying, with exponential backoff
-        await Future.delayed(Duration(milliseconds: 100 * (1 << attempts)));
-      }
-    }
-  }
+  /// Wait for all commands to be processed
+  Future<void> waitForCompletion() => _processingCompleter.future;
 
   /// Internal method to process a single command
   Future<void> _process(Command command) async {
-    final handler = _handlers[command.runtimeType];
-    if (handler == null) {
-      throw HandlerNotFoundException(command.runtimeType);
-    }
+    final commandId =
+        command.hashCode.toString(); // Simple ID for existing commands
+    final manager = _lifecycleRegistry.getManager(commandId, command);
 
     try {
       final aggregate = await _aggregateStore.getAggregate(command.aggregateId);
       if (aggregate == null) {
-        throw CommandProcessingException(
-            'Aggregate not found: ${command.aggregateId}');
+        throw AggregateNotFoundException(command.aggregateId);
       }
 
-      final event = handler.handle(command, aggregate);
+      final event = command.handle(aggregate);
+      manager.notifyHandled(event);
+
       if (event != null) {
         await _eventStore.appendEvents(
             aggregate.id, [event], aggregate.version);
-      }
-    } catch (e, stackTrace) {
-      if (e is HandlerNotFoundException || e is CommandProcessingException) {
-        rethrow;
-      }
-      throw CommandProcessingException(
-          'Error processing command', e, stackTrace);
-    }
-  }
+        manager.notifyEventPublished(event);
 
-  /// Dispose of resources
-  Future<void> dispose() async {
-    await stop();
-    await _queue.dispose();
+        // TODO: When read model projection is implemented:
+        // await _projectionHandler.handleEvent(event);
+        // manager.notifyReadModelUpdated(event);
+      }
+
+      _lifecycleRegistry.removeManager(commandId);
+    } catch (error, stackTrace) {
+      manager.notifyFailed(error, stackTrace);
+      _lifecycleRegistry.removeManager(commandId);
+      rethrow;
+    }
   }
 }

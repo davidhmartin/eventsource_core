@@ -1,24 +1,33 @@
 import 'dart:collection';
-import '../../snapshot_store.dart';
+
+import 'package:eventsource_core/typedefs.dart';
+
+import '../../aggregate.dart';
+import '../aggregate_store.dart';
 import '../lock.dart';
 
 /// In-memory implementation of SnapshotStore
-class InMemorySnapshotStore<TState> implements SnapshotStore<TState> {
-  final _snapshots = HashMap<String, (TState, int)>();
+class InMemorySnapshotStore<TAggregate extends Aggregate>
+    implements SnapshotStore<TAggregate> {
+  final _snapshots = HashMap<String, JsonMap>();
   final _lock = Lock();
 
   @override
-  Future<void> saveSnapshot(
-      String aggregateId, TState state, int version) async {
+  Future<void> saveSnapshot(TAggregate aggregate) async {
     return _lock.synchronized(() async {
-      _snapshots[aggregateId] = (state, version);
+      _snapshots[aggregate.id] = aggregate.toJson();
     });
   }
 
   @override
-  Future<(TState, int)?> getLatestSnapshot(String aggregateId) async {
+  Future<TAggregate?> getLatestSnapshot(String aggregateId) async {
     return _lock.synchronized(() async {
-      return _snapshots[aggregateId];
+      final json = _snapshots[aggregateId];
+      if (json != null) {
+        final state = Aggregate.fromJson(json) as TAggregate;
+        return Future.value(state);
+      }
+      return Future.value(null);
     });
   }
 }

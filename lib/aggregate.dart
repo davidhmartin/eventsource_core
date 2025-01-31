@@ -1,4 +1,10 @@
 import 'event.dart';
+import 'package:meta/meta.dart';
+
+import 'typedefs.dart';
+
+/// Factory function for creating a new empty aggregate.
+typedef AggregateFactory<TAggregate extends Aggregate> = TAggregate Function(String id);
 
 /// Base class for all aggregates
 ///
@@ -6,10 +12,20 @@ import 'event.dart';
 /// that should be treated as a single unit for data changes.
 abstract class Aggregate {
   String _id;
-  int _version;
+  int _version = 0;
 
   /// Creates a new aggregate with the given ID
-  Aggregate(this._id) : _version = 0;
+  Aggregate(this._id);
+
+  /// Protected constructor for use by fromJson implementations
+  /// Example usage:
+  /// ```dart
+  ///   Aggregate.fromJsonBase(json).withEvent(event);
+  /// ```
+  @protected
+  Aggregate.fromJsonBase(JsonMap json)
+      : _id = json['id'] as String,
+        _version = json['version'] as int;
 
   /// ID of this aggregate
   String get id => _id;
@@ -17,20 +33,53 @@ abstract class Aggregate {
   /// Current version (last applied event sequence number)
   int get version => _version;
 
-  /// Convert the aggregate to a JSON-compatible Map
-  Map<String, dynamic> toJson();
+  /// Type identifier for this aggregate. Subclasses must override this to
+  /// return a unique type name.
+  String get type;
 
-  /// Create a new instance of the aggregate from a JSON-compatible Map
-  static Aggregate fromJson(Map<String, dynamic> json) {
-    final type = json['_type'] as String;
-    final serializer = _serializers[type];
-    
-    if (serializer == null) {
-      throw Exception('Unknown aggregate type: $type');
+  /// Convert event to JSON for persistence
+  JsonMap toJson();
+
+  /// Create an Aggregate from a JSON map
+  /// The JSON must include a 'type' field that matches an aggregate type
+  factory Aggregate.fromJson(JsonMap json) {
+    final type = json['type'] as String?;
+    if (type == null) {
+      throw ArgumentError('JSON missing required "type" field');
     }
-    
-    return serializer(json);
+
+    final factory = _factories[type];
+    if (factory == null) {
+      throw ArgumentError('Unknown aggregate type: $type');
+    }
+
+    return factory(json);
   }
+
+  /// Register a factory for creating aggregates of a specific type
+  ///
+  /// This method must be called explicitly for each aggregate type before it can be
+  /// deserialized from JSON. Typically, this is done during application initialization:
+  ///
+  /// ```dart
+  /// void initializeEventSourcing() {
+  ///   Aggregate.registerFactory('UserAggregate', UserAggregate.fromJson);
+  ///   Aggregate.registerFactory('OrderAggregate', OrderAggregate.fromJson);
+  /// }
+  /// ```
+  ///
+  /// If an aggregate type is not registered, [Aggregate.fromJson] will throw an
+  /// [ArgumentError] when attempting to deserialize that type.
+  ///
+  /// [type] must match the value returned by the aggregate's [type] getter.
+  /// [factory] must be a function that takes a JSON map and returns an instance
+  /// of the appropriate aggregate type.
+  static void registerFactory(
+      String type, Aggregate Function(JsonMap) factory) {
+    _factories[type] = factory;
+  }
+
+  static final Map<String, Aggregate Function(JsonMap)> _factories = {};
 
   /// Apply an event to the aggregate
   /// This is called both when applying new events and when rehydrating from history
@@ -52,34 +101,66 @@ abstract class Aggregate {
   /// Internal method that each aggregate must implement to update its state
   /// based on the event type
   void applyEventToState(Event event);
-
-
 }
 
-
 class AggregateSerializer {
-  // Map<String, Aggregate Function(Map<String, dynamic>)> get serializers => _serializers;
-  
-  // static Map<String, Aggregate Function(Map<String, dynamic>)> _serializers = {
+  // Map<String, Aggregate Function(JsonMap)> get serializers => _serializers;
+
+  // static Map<String, Aggregate Function(JsonMap)> _serializers = {
   //   'BoxAggregate': (json) => BoxAggregate.fromJson(json),
   //   // Add other aggregate types here
   // };
 
-  // an instance variable of type Map<String, Aggregate Function(Map<String, dynamic>)>
-  Map<String, Aggregate Function(Map<String, dynamic>)> _serializers = {}
+  // an instance variable of type Map<String, Aggregate Function(JsonMap)>
+  Map<String, Aggregate Function(JsonMap)> _serializers = {};
 
-  Aggregate fromJson(Map<String, dynamic> json) {
+  Aggregate fromJson(JsonMap json) {
     final type = json['_type'] as String;
     final serializer = _serializers[type];
-    
+
     if (serializer == null) {
       throw Exception('Unknown aggregate type: $type');
     }
-    
+
     return serializer(json);
   }
 
-  Map<String, dynamic> toJson(Aggregate aggregate) {
+  JsonMap toJson(Aggregate aggregate) {
     return aggregate.toJson();
+  }
+}
+
+class UserAggregate extends Aggregate {
+  final String name;
+  final String email;
+
+  UserAggregate(String id, this.name, this.email) : super(id);
+
+  @override
+  String get type => 'UserAggregate';
+
+  @override
+  factory UserAggregate.fromJson(JsonMap json) {
+    return UserAggregate._(json);
+  }
+
+  // Private constructor that uses the base class's fromJsonBase
+  UserAggregate._(JsonMap json)
+      : name = json['name'] as String,
+        email = json['email'] as String,
+        super.fromJsonBase(json);
+
+  @override
+  JsonMap toJson() => {
+        'type': type,
+        'id': id,
+        'version': version,
+        'name': name,
+        'email': email,
+      };
+
+  @override
+  void applyEventToState(Event event) {
+    // TODO: implement applyEventToState
   }
 }

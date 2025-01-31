@@ -50,9 +50,10 @@ void main() {
         ),
       ];
 
-      aggregate.applyEvents(events);
+      events.forEach(aggregate.applyEvent);
 
       expect(aggregate.version, equals(2));
+      expect(aggregate.data, equals('data-2'));
     });
 
     test('throws on non-sequential version', () {

@@ -8,7 +8,7 @@ void main() {
 
     setUp(() {
       command = TestCommand(
-        aggregateId: 'test-1',
+        id: 'test-1',
         userId: 'user-1',
         timestamp: now,
         origin: 'test',
@@ -31,8 +31,7 @@ void main() {
 
     test('validates aggregateId not empty', () {
       command = TestCommand(
-        aggregateId: '',
-        userId: 'user-1',
+        id: '',
         timestamp: now,
         origin: 'test',
         data: 'test-data',

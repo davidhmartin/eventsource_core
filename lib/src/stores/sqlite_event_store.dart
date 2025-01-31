@@ -1,22 +1,22 @@
 import 'dart:convert';
 import 'package:sqlite3/sqlite3.dart';
 import '../../event.dart';
-import '../../event_store.dart';
+import '../../typedefs.dart';
+import '../event_store.dart';
 import '../lock.dart';
 
 /// SQLite implementation of EventStore
 class SqliteEventStore implements EventStore {
   final Database _db;
   final _lock = Lock();
-  final Event Function(Map<String, dynamic>)? _eventFactory;
+  final Event Function(JsonMap)? _eventFactory;
 
-  SqliteEventStore._(String path,
-      {Event Function(Map<String, dynamic>)? eventFactory})
+  SqliteEventStore._(String path, {Event Function(JsonMap)? eventFactory})
       : _db = sqlite3.open(path),
         _eventFactory = eventFactory;
 
   static Future<SqliteEventStore> create(String path,
-      {Event Function(Map<String, dynamic>)? eventFactory}) async {
+      {Event Function(JsonMap)? eventFactory}) async {
     final store = SqliteEventStore._(path, eventFactory: eventFactory);
     await store._initializeDatabase();
     return store;
@@ -88,59 +88,60 @@ class SqliteEventStore implements EventStore {
   }
 
   @override
-  Future<List<Event>> getEvents(String aggregateId,
-      {int? fromVersion, String? origin, bool Function(Event)? filter}) async {
-    return _lock.synchronized(() async {
-      try {
-        var query = 'SELECT * FROM events WHERE aggregate_id = ?';
-        List<Object> params = [aggregateId];
+  Stream<Event> getEvents(String aggregateId,
+      {int? fromVersion,
+      int? toVersion,
+      String? origin,
+      bool Function(Event)? filter}) async* {
+    // Build the query with parameters
+    var query = 'SELECT * FROM events WHERE aggregate_id = ?';
+    List<Object> params = [aggregateId];
 
-        if (fromVersion != null) {
-          query += ' AND version >= ?';
-          params.add(fromVersion);
+    if (fromVersion != null) {
+      query += ' AND version >= ?';
+      params.add(fromVersion);
+    }
+
+    if (toVersion != null) {
+      query += ' AND version <= ?';
+      params.add(toVersion);
+    }
+
+    if (origin != null) {
+      query += ' AND origin = ?';
+      params.add(origin);
+    }
+
+    query += ' ORDER BY version ASC';
+
+    // Use a prepared statement for better performance
+    final stmt = _db.prepare(query);
+    try {
+      final results = stmt.select(params);
+      
+      for (final row in results) {
+        if (_eventFactory == null) {
+          throw StateError('No event factory provided to deserialize events');
         }
-
-        if (origin != null) {
-          query += ' AND origin = ?';
-          params.add(origin);
+        
+        final event = _eventFactory({
+          'id': row['id'] as String,
+          'aggregateId': row['aggregate_id'] as String,
+          'eventType': row['event_type'] as String,
+          'data': jsonDecode(row['data'] as String),
+          'metadata': jsonDecode(row['metadata'] as String),
+          'version': row['version'] as int,
+          'timestamp': DateTime.fromMillisecondsSinceEpoch(row['timestamp'] as int),
+          'origin': row['origin'] as String,
+        });
+        
+        if (filter == null || filter(event)) {
+          yield event;
         }
-
-        query += ' ORDER BY version ASC';
-
-        final results = _db.select(query, params);
-        var events = results.map((row) {
-          if (_eventFactory == null) {
-            throw StateError('No event factory provided to deserialize events');
-          }
-          return _eventFactory({
-            'id': row['id'] as String,
-            'aggregateId': row['aggregate_id'] as String,
-            'eventType': row['event_type'] as String,
-            'data': jsonDecode(row['data'] as String),
-            'metadata': jsonDecode(row['metadata'] as String),
-            'version': row['version'] as int,
-            'timestamp':
-                DateTime.fromMillisecondsSinceEpoch(row['timestamp'] as int)
-                    .toIso8601String(),
-            'origin': row['origin'] as String,
-          });
-        }).toList();
-
-        if (filter != null) {
-          events = events.where(filter).toList();
-        }
-
-        return events.isNotEmpty ? List<Event>.from(events) : <Event>[];
-      } catch (e) {
-        // Ensure any failed transaction is rolled back
-        try {
-          _db.execute('ROLLBACK');
-        } catch (rollbackError) {
-          // Ignore rollback errors on read operations
-        }
-        rethrow;
       }
-    });
+    } finally {
+      stmt.dispose();
+    }
   }
 
   int _getCurrentVersion(String aggregateId) {

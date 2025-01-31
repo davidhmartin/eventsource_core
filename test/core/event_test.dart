@@ -23,7 +23,7 @@ void main() {
       expect(event.timestamp, equals(now));
       expect(event.version, equals(1));
       expect(event.origin, equals('test'));
-      expect(event.eventType, equals('TestEvent'));
+      expect(event.type, equals('TestEvent'));
       expect(event.data, equals('test-data'));
     });
 

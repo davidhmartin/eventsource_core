@@ -18,6 +18,7 @@ linter:
     - package_api_docs
     - prefer_const_constructors
     - prefer_final_fields
+    - prefer_single_quotes
     - test_types_in_equals
     - throw_in_finally
     - unnecessary_await_in_return

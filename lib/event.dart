@@ -87,10 +87,10 @@ abstract class Event {
   }
 
   // Called by toJson. Subclasses override to add event state to the json map.
-  void serializeState(JsonMap json) {}
+  void serializeState(JsonMap json);
 
   // Called by fromJson. Subclasses override to set event state from the json map.
-  void deserializeState(JsonMap json) {}
+  void deserializeState(JsonMap json);
 
   /// Register a factory for creating events of a specific type
   ///

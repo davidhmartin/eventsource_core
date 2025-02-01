@@ -49,27 +49,14 @@ class TestEvent extends Event {
 
 /// Test implementation of a command
 class TestCommand extends Command {
-  final String data;
+  String data;
 
-  TestCommand(
-    super._aggregateId,
-    super._timestamp,
-    super._origin,
-    super._type, {
-    required this.aggregateId,
-    required this.timestamp,
-    required this.origin,
+  TestCommand({
+    required ID aggregateId,
+    required DateTime timestamp,
+    required String origin,
     required this.data,
-  }) : commandType = 'TestCommand';
-
-  @override
-  Map<String, dynamic> toJson() => {
-        'aggregateId': aggregateId,
-        'timestamp': timestamp.toIso8601String(),
-        'origin': origin,
-        'commandType': commandType,
-        'data': data,
-      };
+  }) : super(aggregateId, timestamp, origin);
 
   @override
   Event handle(Aggregate aggregate) {
@@ -77,30 +64,37 @@ class TestCommand extends Command {
       id: aggregate.id,
       aggregateId: aggregateId,
       timestamp: timestamp,
-      version: 1,
+      version: aggregate.version + 1,
       origin: origin,
       data: data,
     );
   }
-}
 
-/// Test implementation of an aggregate state
-class TestState {
-  final List<String> appliedData;
+  @override
+  // TODO: implement type
+  String get type => 'TestCommand';
 
-  TestState([this.appliedData = const []]);
+  @override
+  void deserializeState(JsonMap json) {
+    data = json['data'] as String;
+  }
 
-  TestState addData(String data) => TestState([...appliedData, data]);
+  @override
+  void serializeState(JsonMap json) {
+    json['data'] = data;
+  }
 }
 
 /// Test implementation of an aggregate
 class TestAggregate extends Aggregate {
-  TestAggregate(String id) : super(id);
+  String data = '';
+
+  TestAggregate(ID id) : super(id);
 
   @override
   void applyEventToState(Event event) {
     if (event is TestEvent) {
-      // Update state handling as needed
+      data = event.data;
     }
   }
 
@@ -114,4 +108,14 @@ class TestAggregate extends Aggregate {
 
   @override
   String get type => 'TestAggregate';
+
+  @override
+  void deserializeState(JsonMap json) {
+    data = json['data'] as String? ?? '';
+  }
+
+  @override
+  void serializeState(JsonMap json) {
+    json['data'] = data;
+  }
 }

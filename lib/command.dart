@@ -65,10 +65,10 @@ abstract class Command {
   }
 
   // Called by toJson. Subclasses override to add command state to the json map.
-  void serializeState(JsonMap json) {}
+  void serializeState(JsonMap json);
 
   // Called by fromJson. Subclasses override to set command state from the json map.
-  void deserializeState(JsonMap json) {}
+  void deserializeState(JsonMap json);
 
   /// Register a factory for creating commands of a specific type
   ///

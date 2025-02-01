@@ -18,16 +18,6 @@ abstract class Aggregate {
   /// Creates a new aggregate with the given ID
   Aggregate(this._id);
 
-  /// Protected constructor for use by fromJson implementations
-  /// Example usage:
-  /// ```dart
-  ///   Aggregate.fromJsonBase(json).withEvent(event);
-  /// ```
-  @protected
-  Aggregate.fromJsonBase(JsonMap json)
-      : _id = idFromString(json['id'] as String),
-        _version = json['version'] as int;
-
   /// ID of this aggregate
   ID get id => _id;
 
@@ -69,10 +59,10 @@ abstract class Aggregate {
   }
 
   // Called by toJson. Subclasses override to add aggregate state to the json map.
-  void serializeState(JsonMap json) {}
+  void serializeState(JsonMap json);
 
   // Called by fromJson. Subclasses override to set aggregate state from the json map.
-  void deserializeState(JsonMap json) {}
+  void deserializeState(JsonMap json);
 
   /// Register a factory for creating aggregates of a specific type
   ///
@@ -148,37 +138,37 @@ class AggregateSerializer {
   }
 }
 
-class UserAggregate extends Aggregate {
-  final String name;
-  final String email;
+// class UserAggregate extends Aggregate {
+//   final String name;
+//   final String email;
 
-  UserAggregate(ID id, this.name, this.email) : super(id);
+//   UserAggregate(ID id, this.name, this.email) : super(id);
 
-  @override
-  String get type => 'UserAggregate';
+//   @override
+//   String get type => 'UserAggregate';
 
-  @override
-  factory UserAggregate.fromJson(JsonMap json) {
-    return UserAggregate._(json);
-  }
+//   @override
+//   factory UserAggregate.fromJson(JsonMap json) {
+//     return UserAggregate._(json);
+//   }
 
-  // Private constructor that uses the base class's fromJsonBase
-  UserAggregate._(JsonMap json)
-      : name = json['name'] as String,
-        email = json['email'] as String,
-        super.fromJsonBase(json);
+//   // Private constructor that uses the base class's fromJsonBase
+//   UserAggregate._(JsonMap json)
+//       : name = json['name'] as String,
+//         email = json['email'] as String,
+//         super.fromJsonBase(json);
 
-  @override
-  JsonMap toJson() => {
-        'type': type,
-        'id': id.toString(),
-        'version': version,
-        'name': name,
-        'email': email,
-      };
+//   @override
+//   JsonMap toJson() => {
+//         'type': type,
+//         'id': id.toString(),
+//         'version': version,
+//         'name': name,
+//         'email': email,
+//       };
 
-  @override
-  void applyEventToState(Event event) {
-    // TODO: implement applyEventToState
-  }
-}
+//   @override
+//   void applyEventToState(Event event) {
+//     // TODO: implement applyEventToState
+//   }
+// }

@@ -56,7 +56,7 @@ class TestCommand extends Command {
     required DateTime timestamp,
     required String origin,
     required this.data,
-  }) : super(aggregateId, timestamp, origin);
+  }) : super(aggregateId, 'TestAggregate', timestamp, origin);
 
   @override
   Event handle(Aggregate aggregate) {
@@ -89,21 +89,13 @@ class TestCommand extends Command {
 class TestAggregate extends Aggregate {
   String data = '';
 
-  TestAggregate(ID id) : super(id);
+  TestAggregate(super.id);
 
   @override
   void applyEventToState(Event event) {
     if (event is TestEvent) {
       data = event.data;
     }
-  }
-
-  @override
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'version': version,
-    };
   }
 
   @override

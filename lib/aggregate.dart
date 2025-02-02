@@ -3,6 +3,8 @@ import 'package:meta/meta.dart';
 
 import 'typedefs.dart';
 
+typedef AggregateType = String;
+
 /// Factory function for creating a new empty aggregate.
 typedef AggregateFactory<TAggregate extends Aggregate> = TAggregate Function(
     ID id);

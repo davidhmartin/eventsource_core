@@ -1,8 +1,12 @@
-import 'package:eventsource_core/src/aggregate_store.dart';
+import 'package:eventsource_core/src/aggregate_repository.dart';
 import 'package:eventsource_core/typedefs.dart';
 
 import '../../aggregate.dart';
 
+// Snapshotting the aggregate is an optimization, as the aggregate can always be
+// rehydrated from the event store. Using an AggregateStore with a null SnapshotStore
+// will result in the aggregate being rehydrated from the event store every time
+// an aggregate is requested.
 class NullSnapshotStore<TAggregate extends Aggregate>
     implements SnapshotStore<TAggregate> {
   @override

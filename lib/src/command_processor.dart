@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:eventsource_core/aggregate.dart';
+
 import '../command.dart';
 import '../event.dart';
 import '../typedefs.dart';
 import 'command_queue.dart';
 import 'event_store.dart';
-import 'aggregate_store.dart';
+import 'aggregate_repository.dart';
 import 'command_lifecycle.dart';
 import 'command_lifecycle_manager.dart';
 
@@ -32,7 +34,7 @@ class AggregateNotFoundException implements Exception {
 /// Processes commands and maintains command state
 class CommandProcessor {
   final EventStore _eventStore;
-  final AggregateStore _aggregateStore;
+  final AggregateRepository _aggregates;
   final CommandQueue _queue;
   final CommandLifecycleRegistry _lifecycleRegistry;
 
@@ -42,7 +44,7 @@ class CommandProcessor {
 
   CommandProcessor(
     this._eventStore,
-    this._aggregateStore,
+    this._aggregates,
     this._queue,
   ) : _lifecycleRegistry = CommandLifecycleRegistry();
 
@@ -117,10 +119,8 @@ class CommandProcessor {
     final manager = _lifecycleRegistry.getManager(commandId, command);
 
     try {
-      final aggregate = await _aggregateStore.getAggregate(command.aggregateId);
-      if (aggregate == null) {
-        throw AggregateNotFoundException(command.aggregateId);
-      }
+      Aggregate? aggregate = await _aggregates.getAggregate(
+          command.aggregateId, command.aggregateType);
 
       final event = command.handle(aggregate);
       manager.notifyHandled(event);

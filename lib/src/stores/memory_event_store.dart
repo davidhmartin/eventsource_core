@@ -43,7 +43,7 @@ class InMemoryEventStore implements EventStore {
     });
 
     int from = fromVersion ?? 0;
-    int to = toVersion ?? MAX_INT;
+    int to = toVersion ?? maxInt;
     for (final Event e in events) {
       if (e.version < from ||
           e.version > to ||

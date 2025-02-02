@@ -11,14 +11,13 @@ export 'src/command_lifecycle.dart';
 /// may be rejected.
 abstract class Command {
   final ID _aggregateId;
+  final String _aggregateType;
   final DateTime _timestamp;
   final String _origin;
+  final bool _isCreate;
 
-  Command(
-    this._aggregateId,
-    this._timestamp,
-    this._origin,
-  ) {
+  Command(this._aggregateId, this._aggregateType, this._timestamp,
+      [this._origin = '', this._isCreate = false]) {
     validate();
   }
 
@@ -30,6 +29,12 @@ abstract class Command {
 
   /// Origin system/component that issued the command
   String get origin => _origin;
+
+  /// True if this is a create command. Create commands result in a new aggregate.
+  bool get isCreate => _isCreate;
+
+  /// Type of the aggregate this command targets
+  String get aggregateType => _aggregateType;
 
   /// Type identifier for this command
   String get type;

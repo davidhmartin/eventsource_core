@@ -6,7 +6,7 @@ typedef JsonMap = Map<String, dynamic>;
 typedef ID = Ulid;
 
 /// Maximum safe integer that works across all platforms (including web)
-const int MAX_INT = (1 << 53) - 1; // 2^53 - 1
+const int maxInt = (1 << 53) - 1; // 2^53 - 1
 
 /// Parse a string into an ID (Ulid)
 ID idFromString(String str) => Ulid.parse(str);

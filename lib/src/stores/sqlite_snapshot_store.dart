@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'package:sqlite3/sqlite3.dart';
 import '../../aggregate.dart';
 import '../../typedefs.dart';
-import '../aggregate_store.dart';
+import '../aggregate_repository.dart';
 import '../lock.dart';
 
-/// SQLite implementation of SnapshotStore
+/// SQLite implementation of SnapshotStore.
 class SqliteSnapshotStore<TAggregate extends Aggregate>
     implements SnapshotStore<TAggregate> {
   final Database _db;

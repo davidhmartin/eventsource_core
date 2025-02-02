@@ -9,35 +9,34 @@ import '../lock.dart';
 class SqliteEventStore implements EventStore {
   final Database _db;
   final _lock = Lock();
-  final Event Function(JsonMap)? _eventFactory;
+  final EventDeserializer _eventFactory;
 
-  SqliteEventStore._(String path, {Event Function(JsonMap)? eventFactory})
-      : _db = sqlite3.open(path),
-        _eventFactory = eventFactory;
+  SqliteEventStore(String path, {EventDeserializer? eventFactory})
+      : _eventFactory = eventFactory ?? Event.fromJson,
+        _db = sqlite3.open(path);
 
-  static Future<SqliteEventStore> create(String path,
-      {Event Function(JsonMap)? eventFactory}) async {
-    final store = SqliteEventStore._(path, eventFactory: eventFactory);
-    await store._initializeDatabase();
-    return store;
+  void _initializeDatabase() {
+    _db.execute('''
+      CREATE TABLE IF NOT EXISTS events (
+        id TEXT NOT NULL,
+        aggregate_id TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        event_type TEXT NOT NULL,
+        data TEXT NOT NULL,
+        metadata TEXT NOT NULL,
+        timestamp INTEGER NOT NULL,
+        origin TEXT NOT NULL,
+        PRIMARY KEY (aggregate_id, version)
+      )
+    ''');
   }
 
-  Future<void> _initializeDatabase() async {
-    return _lock.synchronized(() async {
-      _db.execute('''
-        CREATE TABLE IF NOT EXISTS events (
-          id TEXT NOT NULL,
-          aggregate_id TEXT NOT NULL,
-          version INTEGER NOT NULL,
-          event_type TEXT NOT NULL,
-          data TEXT NOT NULL,
-          metadata TEXT NOT NULL,
-          timestamp INTEGER NOT NULL,
-          origin TEXT NOT NULL,
-          PRIMARY KEY (aggregate_id, version)
-        )
-      ''');
+  static Future<SqliteEventStore> create(String path) async {
+    final store = SqliteEventStore(path);
+    await store._lock.synchronized(() async {
+      await Future.delayed(Duration(milliseconds: 0));
     });
+    return store;
   }
 
   @override
@@ -120,10 +119,6 @@ class SqliteEventStore implements EventStore {
       final results = stmt.select(params);
 
       for (final row in results) {
-        if (_eventFactory == null) {
-          throw StateError('No event factory provided to deserialize events');
-        }
-
         final event = _eventFactory({
           'id': row['id'] as String,
           'aggregateId': row['aggregate_id'] as String,

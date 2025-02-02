@@ -35,7 +35,7 @@ class AggregateNotFoundException implements Exception {
 class CommandProcessor {
   final EventStore _eventStore;
   final AggregateRepository _aggregates;
-  final CommandQueue _queue;
+  final CommandQueue _queue = CommandQueue();
   final CommandLifecycleRegistry _lifecycleRegistry;
 
   StreamSubscription? _subscription;
@@ -45,7 +45,6 @@ class CommandProcessor {
   CommandProcessor(
     this._eventStore,
     this._aggregates,
-    this._queue,
   ) : _lifecycleRegistry = CommandLifecycleRegistry();
 
   /// Submit a command for processing
@@ -65,19 +64,59 @@ class CommandProcessor {
   /// If an error occurs at any point, a [CommandFailed] event will be emitted
   /// and the stream will complete.
   Stream<CommandLifecycleEvent> publish(Command command) {
-    final commandId = DateTime.now().toIso8601String(); // Simple ID generation
-    final manager = _lifecycleRegistry.getManager(commandId, command);
+    final commandId = command.hashCode.toString(); // Use same ID as process
+    final controller = StreamController<CommandLifecycleEvent>();
 
-    // Start processing the command
-    submit(command).then((_) {
-      // Command completed successfully
-    }).catchError((Object error, StackTrace stackTrace) {
-      manager.notifyFailed(error, stackTrace);
-      _lifecycleRegistry.removeManager(commandId);
-    });
+    // Emit initial event
+    controller.add(CommandPublished(
+      commandId: commandId,
+      command: command,
+    ));
 
-    // Return the lifecycle event stream
-    return manager.stream;
+    () async {
+      try {
+        final manager = await _lifecycleRegistry.getManager(commandId, command);
+
+        // Start processing the command
+        submit(command).then((_) {
+          // Command completed successfully
+        }).catchError((Object error, StackTrace stackTrace) {
+          manager.notifyFailed(error, stackTrace);
+          _lifecycleRegistry.removeManager(commandId);
+        });
+
+        // // Subscribe to manager's stream first
+        // final subscription = manager.stream.listen(
+        //   (event) {
+        //     print('Forwarding event: ${event.runtimeType}');
+        //     if (event is CommandLifecycleEvent) {
+        //       controller.add(event);
+        //     } else {
+        //       print('Unexpected event type: ${event.runtimeType}');
+        //     }
+        //   },
+        //   onError: (Object error, StackTrace stackTrace) {
+        //     print('Error in manager stream: $error\n$stackTrace');
+        //     controller.addError(error, stackTrace);
+        //   },
+        //   onDone: () {
+        //     print('Manager stream done');
+        //     controller.close();
+        //   },
+        // );
+
+        // // Then start processing the command
+        // await submit(command);
+      } catch (error, stackTrace) {
+        print('Error in publish: $error\n$stackTrace');
+        final manager = await _lifecycleRegistry.getManager(commandId, command);
+        await manager.notifyFailed(error, stackTrace);
+        await _lifecycleRegistry.removeManager(commandId);
+        controller.close();
+      }
+    }();
+
+    return controller.stream;
   }
 
   /// Start processing commands asynchronously
@@ -90,9 +129,9 @@ class CommandProcessor {
         // Log error but continue processing
         print('Error processing command: $error\n$stackTrace');
       }),
-      onError: (Object error) {
-        print('Error in command stream: $error');
-        _processingCompleter.completeError(error);
+      onError: (Object error, StackTrace stackTrace) {
+        print('Error in command stream: $error\n$stackTrace');
+        _processingCompleter.completeError(error, stackTrace);
       },
       onDone: () {
         _isProcessing = false;
@@ -116,29 +155,36 @@ class CommandProcessor {
   Future<void> _process(Command command) async {
     final commandId =
         command.hashCode.toString(); // Simple ID for existing commands
-    final manager = _lifecycleRegistry.getManager(commandId, command);
+    final manager = await _lifecycleRegistry.getManager(commandId, command);
 
     try {
+      print('Processing command: ${command.type}');
       Aggregate? aggregate = await _aggregates.getAggregate(
           command.aggregateId, command.aggregateType);
+      print('Got aggregate: ${aggregate?.id}');
 
       final event = command.handle(aggregate);
-      manager.notifyHandled(event);
+      print('Generated event: ${event?.type}');
+      await manager.notifyHandled(event);
+      print('Notified handled');
 
       if (event != null) {
         await _eventStore.appendEvents(
             aggregate.id, [event], aggregate.version);
-        manager.notifyEventPublished(event);
+        await manager.notifyEventPublished(event);
+        print('Notified event published');
 
         // TODO: When read model projection is implemented:
         // await _projectionHandler.handleEvent(event);
         // manager.notifyReadModelUpdated(event);
       }
 
-      _lifecycleRegistry.removeManager(commandId);
+      await _lifecycleRegistry.removeManager(commandId);
+      print('Removed lifecycle manager');
     } catch (error, stackTrace) {
-      manager.notifyFailed(error, stackTrace);
-      _lifecycleRegistry.removeManager(commandId);
+      print('Error processing command: $error\n$stackTrace');
+      await manager.notifyFailed(error, stackTrace);
+      await _lifecycleRegistry.removeManager(commandId);
       rethrow;
     }
   }

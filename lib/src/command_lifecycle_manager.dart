@@ -24,7 +24,8 @@ class CommandLifecycleManager {
   Stream<CommandLifecycleEvent> get stream => _controller.stream;
 
   /// Notify that command handling is complete
-  void notifyHandled(Event? generatedEvent) {
+  Future<void> notifyHandled(Event? generatedEvent) async {
+    print('CommandLifecycleManager.notifyHandled: ${generatedEvent?.type}');
     _emit(CommandHandled(
       commandId: commandId,
       command: command,
@@ -33,7 +34,8 @@ class CommandLifecycleManager {
   }
 
   /// Notify that an event was published
-  void notifyEventPublished(Event event) {
+  Future<void> notifyEventPublished(Event event) async {
+    print('CommandLifecycleManager.notifyEventPublished: ${event.type}');
     _emit(EventPublished(
       commandId: commandId,
       command: command,
@@ -42,7 +44,8 @@ class CommandLifecycleManager {
   }
 
   /// Notify that the read model was updated
-  void notifyReadModelUpdated(Event event) {
+  Future<void> notifyReadModelUpdated(Event event) async {
+    print('CommandLifecycleManager.notifyReadModelUpdated: ${event.type}');
     _emit(ReadModelUpdated(
       commandId: commandId,
       command: command,
@@ -52,7 +55,8 @@ class CommandLifecycleManager {
   }
 
   /// Notify that command processing failed
-  void notifyFailed(Object error, StackTrace stackTrace) {
+  Future<void> notifyFailed(Object error, StackTrace stackTrace) async {
+    print('CommandLifecycleManager.notifyFailed: $error');
     _emit(CommandFailed(
       commandId: commandId,
       command: command,
@@ -64,12 +68,16 @@ class CommandLifecycleManager {
   }
 
   void _emit(CommandLifecycleEvent event) {
+    print('CommandLifecycleManager._emit: ${event.runtimeType}');
     if (!_isComplete) {
       _controller.add(event);
+    } else {
+      print('Warning: Attempted to emit event after completion');
     }
   }
 
   void _complete() {
+    print('CommandLifecycleManager._complete');
     if (!_isComplete) {
       _isComplete = true;
       _controller.close();
@@ -83,17 +91,16 @@ class CommandLifecycleRegistry {
   final _lock = Lock();
 
   /// Get or create a lifecycle manager for a command
-  CommandLifecycleManager getManager(String commandId, Command command) {
-    _lock.synchronized(() {
+  Future<CommandLifecycleManager> getManager(String commandId, Command command) {
+    return _lock.synchronized(() {
       return _managers.putIfAbsent(
           commandId, () => CommandLifecycleManager(commandId, command));
     });
-    throw Exception('Failed to get or create a CommandLifecycleManager for the given commandId.');
   }
 
   /// Remove a completed lifecycle manager
-  void removeManager(String commandId) {
-    _lock.synchronized(() {
+  Future<void> removeManager(String commandId) {
+    return _lock.synchronized(() {
       _managers.remove(commandId);
     });
   }

@@ -1,4 +1,5 @@
 import 'package:eventsource_core/eventsource_core.dart';
+import 'package:eventsource_core/src/aggregate_repository.dart';
 
 /// A facade that provides a unified interface to the event sourcing system.
 /// This is the primary entry point for applications using the event sourcing framework.
@@ -10,13 +11,13 @@ class EventSourcingSystem {
   /// Create a new event sourcing system with the specified storage implementations.
   EventSourcingSystem({
     required EventStoreFactory eventStoreFactory,
-    required SnapshotStoreFactory snapshotStoreFactory,
-  }) : this._(eventStoreFactory, snapshotStoreFactory);
+    required SnapshotStore snapshotStore,
+  }) : this._(eventStoreFactory, snapshotStore);
 
   EventSourcingSystem._(
     EventStoreFactory eventStoreFactory,
-    SnapshotStoreFactory snapshotStoreFactory,
-  ) : this.__(_createComponents(eventStoreFactory, snapshotStoreFactory));
+    SnapshotStore snapshotStore,
+  ) : this.__(_createComponents(eventStoreFactory, snapshotStore));
 
   EventSourcingSystem.__(
     ({AggregateRepository repository, CommandProcessor processor}) components,
@@ -28,10 +29,10 @@ class EventSourcingSystem {
     CommandProcessor processor,
   }) _createComponents(
     EventStoreFactory eventStoreFactory,
-    SnapshotStoreFactory snapshotStoreFactory,
+    SnapshotStore snapshotStore,
   ) {
     final eventStore = eventStoreFactory();
-    final repository = AggregateRepository(eventStore, snapshotStoreFactory);
+    final repository = AggregateRepository(eventStore, snapshotStore);
     final processor = CommandProcessor(eventStore, repository);
     return (repository: repository, processor: processor);
   }

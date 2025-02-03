@@ -6,8 +6,7 @@ import '../aggregate_repository.dart';
 import '../lock.dart';
 
 /// SQLite implementation of SnapshotStore.
-class SqliteSnapshotStore<TAggregate extends Aggregate>
-    implements SnapshotStore<TAggregate> {
+class SqliteSnapshotStore implements SnapshotStore {
   final Database _db;
   final _lock = Lock();
 
@@ -19,6 +18,7 @@ class SqliteSnapshotStore<TAggregate extends Aggregate>
     _db.execute('''
       CREATE TABLE IF NOT EXISTS snapshots (
         aggregate_id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
         state TEXT NOT NULL,
         version INTEGER NOT NULL
       )
@@ -26,7 +26,7 @@ class SqliteSnapshotStore<TAggregate extends Aggregate>
   }
 
   @override
-  Future<TAggregate?> getLatestSnapshot(ID aggregateId) async {
+  Future<Aggregate?> getLatestSnapshot(ID aggregateId) async {
     return _lock.synchronized(() {
       final result = _db.select(
         'SELECT state, version FROM snapshots WHERE aggregate_id = ?',
@@ -43,7 +43,7 @@ class SqliteSnapshotStore<TAggregate extends Aggregate>
       final jsonMap = jsonDecode(row['state'] as String) as JsonMap;
       final version = row['version'] as int;
 
-      final TAggregate aggregate = Aggregate.fromJson(jsonMap) as TAggregate;
+      final Aggregate aggregate = Aggregate.fromJson(jsonMap);
 
       return Future.value(aggregate);
       // } catch (e) {
@@ -54,15 +54,16 @@ class SqliteSnapshotStore<TAggregate extends Aggregate>
   }
 
   @override
-  Future<void> saveSnapshot(TAggregate aggregate) {
+  Future<void> saveSnapshot(Aggregate aggregate) {
     return _lock.synchronized(() async {
       final stateJson = jsonEncode(aggregate.toJson());
       final version = aggregate.version;
       final aggregateId = aggregate.id;
+      final type = aggregate.type;
       _db.execute('''
-        INSERT OR REPLACE INTO snapshots (aggregate_id, state, version)
-        VALUES (?, ?, ?)
-      ''', [aggregateId, stateJson, version]);
+        INSERT OR REPLACE INTO snapshots (aggregate_id, type, state, version)
+        VALUES (?, ?, ?, ?)
+      ''', [aggregateId, type, stateJson, version]);
     });
   }
 

@@ -3,17 +3,16 @@ import '../typedefs.dart';
 import 'event_store.dart';
 import 'stores/null_snapshot_store.dart';
 
-typedef SnapshotStoreFactory<TAggregate extends Aggregate>
-    = SnapshotStore<TAggregate> Function();
+typedef SnapshotStoreFactory = SnapshotStore Function();
 
 /// AggregateRepository is used to retrieve aggregates from the event store.
 class AggregateRepository {
   final EventStore _eventStore;
   final Map<String, AggregateRehydrator> _rehydrators = {};
   final Map<String, AggregateFactory> _factories = {};
-  final SnapshotStoreFactory _snapshotStoreFactory;
+  final SnapshotStore _snapshotStore;
 
-  AggregateRepository(this._eventStore, this._snapshotStoreFactory);
+  AggregateRepository(this._eventStore, this._snapshotStore);
 
   /// Register a factory for a specific aggregate type
   AggregateRepository register<T extends Aggregate>(
@@ -22,8 +21,8 @@ class AggregateRepository {
     final aggregateType = tempAggregate.type;
 
     _factories[aggregateType] = factory;
-    _rehydrators[aggregateType] = AggregateRehydrator<T>(
-        _eventStore, factory, _snapshotStoreFactory() as SnapshotStore<T>);
+    _rehydrators[aggregateType] =
+        AggregateRehydrator<T>(_eventStore, factory, _snapshotStore);
     return this;
   }
 
@@ -61,7 +60,7 @@ class AggregateRepository {
 class AggregateRehydrator<TAggregate extends Aggregate> {
   final EventStore _eventStore;
   final AggregateFactory<TAggregate> _createEmptyAggregate;
-  final SnapshotStore<TAggregate> _snapshotStore;
+  final SnapshotStore _snapshotStore;
 
   /// Create a new instance of the aggregate repository
   ///
@@ -69,11 +68,11 @@ class AggregateRehydrator<TAggregate extends Aggregate> {
   /// [createEmptyAggregate] Function to create empty aggregates
   /// [snapshotStore] Optional store to use for snapshots
   AggregateRehydrator(this._eventStore, this._createEmptyAggregate,
-      [SnapshotStore<TAggregate>? snapshotStore])
-      : _snapshotStore = snapshotStore ?? NullSnapshotStore<TAggregate>();
+      [SnapshotStore? snapshotStore])
+      : _snapshotStore = snapshotStore ?? NullSnapshotStore();
 
   /// Get an aggregate by its ID, using snapshots if available
-  Future<TAggregate> getAggregate(ID id, bool create, int toVersion) async {
+  Future<Aggregate> getAggregate(ID id, bool create, int toVersion) async {
     // todo do we need "create" at all?
 
     if (toVersion == 0) {
@@ -81,8 +80,8 @@ class AggregateRehydrator<TAggregate extends Aggregate> {
     }
     create ??= false;
     // Try to get the latest snapshot if we have a snapshot store
-    TAggregate? agg = await _snapshotStore.getLatestSnapshot(id);
-    TAggregate aggregate = agg ?? _createEmptyAggregate(id);
+    Aggregate? agg = await _snapshotStore.getLatestSnapshot(id);
+    Aggregate aggregate = agg ?? _createEmptyAggregate(id);
 
     int to = toVersion ?? maxInt;
     int from = aggregate.version;
@@ -124,10 +123,10 @@ class AggregateRehydrator<TAggregate extends Aggregate> {
 
 // SnapshotStore is used by AggregateStore to store and retrieve aggregate
 // snapshots.
-abstract class SnapshotStore<TAggregate extends Aggregate> {
+abstract class SnapshotStore {
   /// Save a snapshot
-  Future<void> saveSnapshot(TAggregate aggregate);
+  Future<void> saveSnapshot(Aggregate aggregate);
 
   /// Get latest snapshot
-  Future<TAggregate?> getLatestSnapshot(ID aggregateId);
+  Future<Aggregate?> getLatestSnapshot(ID aggregateId);
 }

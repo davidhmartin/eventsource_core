@@ -258,7 +258,7 @@ void main() async {
   // Set up the event sourcing system
   final system = EventSourcingSystem(
     eventStoreFactory: EventStores.memory,
-    snapshotStoreFactory: SnapshotStores.memory,
+    snapshotStore: SnapshotStores.memory(),
   )..registerAggregate<TodoListAggregate>(TodoListAggregate.new);
 
   // Start processing commands

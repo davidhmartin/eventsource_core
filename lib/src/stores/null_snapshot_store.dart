@@ -7,15 +7,14 @@ import '../../aggregate.dart';
 // rehydrated from the event store. Using an AggregateStore with a null SnapshotStore
 // will result in the aggregate being rehydrated from the event store every time
 // an aggregate is requested.
-class NullSnapshotStore<TAggregate extends Aggregate>
-    implements SnapshotStore<TAggregate> {
+class NullSnapshotStore implements SnapshotStore {
   @override
-  Future<void> saveSnapshot(TAggregate aggregate) async {
+  Future<void> saveSnapshot(Aggregate aggregate) async {
     // Do nothing
   }
 
   @override
-  Future<TAggregate?> getLatestSnapshot(ID aggregateId) async {
+  Future<Aggregate?> getLatestSnapshot(ID aggregateId) async {
     return Future.value(null);
   }
 }

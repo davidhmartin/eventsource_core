@@ -59,9 +59,9 @@ abstract class Aggregate {
           'Event aggregate ID ${event.aggregateId} does not match aggregate ID $id');
     }
 
-    if (event.version <= _version) {
+    if (event.version < _version) {
       throw ArgumentError(
-          'Event version ${event.version} is not greater than aggregate version $_version');
+          'Event version ${event.version} is less than aggregate version $_version');
     }
 
     applyEventToState(event);

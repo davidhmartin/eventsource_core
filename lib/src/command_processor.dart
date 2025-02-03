@@ -153,15 +153,20 @@ class CommandProcessor {
 
   /// Internal method to process a single command
   Future<void> _process(Command command) async {
-    final commandId =
-        command.hashCode.toString(); // Simple ID for existing commands
+    final commandId = command.hashCode.toString(); // Simple ID for existing commands
     final manager = await _lifecycleRegistry.getManager(commandId, command);
 
     try {
       print('Processing command: ${command.type}');
-      Aggregate? aggregate = await _aggregates.getAggregate(
-          command.aggregateId, command.aggregateType);
-      print('Got aggregate: ${aggregate?.id}');
+      
+      // Get or create the aggregate based on the command's create flag
+      Aggregate aggregate;
+      if (command.create) {
+        aggregate = await _aggregates.createAggregate(command.aggregateId, command.aggregateType);
+      } else {
+        aggregate = await _aggregates.getAggregate(command.aggregateId, command.aggregateType);
+      }
+      print('Got aggregate: ${aggregate.id}');
 
       final event = command.handle(aggregate);
       print('Generated event: ${event?.type}');
@@ -169,8 +174,7 @@ class CommandProcessor {
       print('Notified handled');
 
       if (event != null) {
-        await _eventStore.appendEvents(
-            aggregate.id, [event], aggregate.version);
+        await _eventStore.appendEvents(aggregate.id, [event], aggregate.version);
         await manager.notifyEventPublished(event);
         print('Notified event published');
 

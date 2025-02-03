@@ -10,69 +10,37 @@ export 'src/command_lifecycle.dart';
 /// requests for state changes. Unlike events, commands are not persisted and
 /// may be rejected.
 abstract class Command {
-  final ID _aggregateId;
-  final String _aggregateType;
-  final DateTime _timestamp;
-  final String _origin;
-  final bool _isCreate;
+  final ID aggregateId;
+  final String aggregateType;
+  final DateTime timestamp;
+  final String origin;
+  final bool create;
 
-  Command(this._aggregateId, this._aggregateType, this._timestamp,
-      [this._origin = '', this._isCreate = false]) {
-    validate();
-  }
+  Command(this.aggregateId, this.aggregateType, this.timestamp, this.origin, this.create);
 
-  /// ID of the aggregate this command belongs to
-  ID get aggregateId => _aggregateId;
-
-  /// When the command was issued
-  DateTime get timestamp => _timestamp;
-
-  /// Origin system/component that issued the command
-  String get origin => _origin;
-
-  /// True if this is a create command. Create commands result in a new aggregate.
-  bool get isCreate => _isCreate;
-
-  /// Type of the aggregate this command targets
-  String get aggregateType => _aggregateType;
-
-  /// Type identifier for this command
+  /// The type of the command
   String get type;
 
-  @nonVirtual
+  /// Handle the command and return an event if successful
+  Event? handle(Aggregate? aggregate);
+
+  /// Convert the command to a JSON map
   JsonMap toJson() {
-    JsonMap map = {
-      'aggregateId': _aggregateId.toString(),
-      'timestamp': _timestamp.toIso8601String(),
-      'origin': _origin,
-      'type': type,
+    final json = <String, dynamic>{
+      'aggregateId': aggregateId,
+      'aggregateType': aggregateType,
+      'timestamp': timestamp.toIso8601String(),
+      'origin': origin,
+      'create': create,
     };
-    serializeState(map);
-    return map;
+    serializeState(json);
+    return json;
   }
 
-  /// Create a Command from a JSON map
-  /// The JSON must include a 'type' field that matches a registered command type
-  factory Command.fromJson(JsonMap json) {
-    final type = json['type'] as String?;
-    if (type == null) {
-      throw ArgumentError('JSON missing required "type" field');
-    }
-
-    final factory = _factories[type];
-    if (factory == null) {
-      throw ArgumentError('Unknown command type: $type');
-    }
-
-    Command command = factory(json);
-    command.deserializeState(json);
-    return command;
-  }
-
-  // Called by toJson. Subclasses override to add command state to the json map.
+  /// Serialize the command's state to a JSON map
   void serializeState(JsonMap json);
 
-  // Called by fromJson. Subclasses override to set command state from the json map.
+  /// Deserialize the command's state from a JSON map
   void deserializeState(JsonMap json);
 
   /// Register a factory for creating commands of a specific type
@@ -99,6 +67,24 @@ abstract class Command {
 
   static final Map<String, Command Function(JsonMap)> _factories = {};
 
+  /// Create a Command from a JSON map
+  /// The JSON must include a 'type' field that matches a registered command type
+  factory Command.fromJson(JsonMap json) {
+    final type = json['type'] as String?;
+    if (type == null) {
+      throw ArgumentError('JSON missing required "type" field');
+    }
+
+    final factory = _factories[type];
+    if (factory == null) {
+      throw ArgumentError('Unknown command type: $type');
+    }
+
+    Command command = factory(json);
+    command.deserializeState(json);
+    return command;
+  }
+
   /// Validate that the command is well-formed
   /// Throws [ArgumentError] if validation fails
   void validate() {
@@ -106,9 +92,4 @@ abstract class Command {
       throw ArgumentError('Command type cannot be empty');
     }
   }
-
-  /// Handle this command against the given aggregate
-  /// Returns an event if the command results in a state change, null otherwise
-  /// Throws [ArgumentError] if the command is invalid for the current state
-  Event? handle(Aggregate aggregate);
 }

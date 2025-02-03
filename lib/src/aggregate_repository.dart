@@ -25,6 +25,16 @@ class AggregateRepository {
     return this;
   }
 
+  /// Create a new aggregate of the specified type
+  Future<Aggregate> createAggregate(ID id, String type) async {
+    if (!_factories.containsKey(type)) {
+      throw ArgumentError('No factory registered for aggregate type: $type');
+    }
+
+    final factory = _factories[type] as AggregateFactory;
+    return factory(id);
+  }
+
   /// Get an aggregate by its ID. If not found, a new empty aggregate will be
   /// created.
   ///
@@ -90,10 +100,10 @@ class AggregateRehydrator<T extends Aggregate> {
     // Get events from the event store
     final events = await _eventStore.getEvents(id, fromVersion: from).toList();
     if (events.isEmpty) {
-      if (!create) {
-        throw StateError('Aggregate not found: $id');
+      if (create) {
+        return aggregate;
       }
-      return aggregate;
+      throw StateError('Aggregate not found: $id');
     }
 
     // Apply events to the aggregate

@@ -1,4 +1,7 @@
 import 'package:eventsource_core/eventsource_core.dart';
+import 'package:eventsource_core/src/stores/memory_event_store.dart';
+import 'package:eventsource_core/src/stores/null_snapshot_store.dart';
+import 'package:eventsource_core/src/stores/store_factories.dart';
 import 'package:ulid/ulid.dart';
 
 // Value object for a todo item
@@ -22,7 +25,7 @@ class TodoItem {
 class TodoListCreated extends Event {
   final String title;
 
-  TodoListCreated(Ulid id, Ulid aggregateId, DateTime timestamp, this.title)
+  TodoListCreated(ID id, ID aggregateId, DateTime timestamp, this.title)
       : super(id, aggregateId, timestamp, 1, '');
 
   @override
@@ -50,7 +53,7 @@ class TodoItemAdded extends Event {
   final String title;
 
   TodoItemAdded(
-      Ulid id, Ulid aggregateId, DateTime timestamp, this.itemId, this.title)
+      ID id, ID aggregateId, DateTime timestamp, this.itemId, this.title)
       : super(id, aggregateId, timestamp, 1, '');
 
   @override
@@ -77,7 +80,7 @@ class TodoItemAdded extends Event {
 class TodoItemCompleted extends Event {
   final String itemId;
 
-  TodoItemCompleted(Ulid id, Ulid aggregateId, DateTime timestamp, this.itemId)
+  TodoItemCompleted(ID id, ID aggregateId, DateTime timestamp, this.itemId)
       : super(id, aggregateId, timestamp, 1, '');
 
   @override
@@ -104,7 +107,7 @@ class TodoItemCompleted extends Event {
 class CreateTodoList extends Command {
   final String title;
 
-  CreateTodoList(Ulid aggregateId, DateTime timestamp, this.title)
+  CreateTodoList(ID aggregateId, DateTime timestamp, this.title)
       : super(aggregateId, 'TodoList', timestamp);
 
   @override
@@ -115,7 +118,7 @@ class CreateTodoList extends Command {
     if (title.isEmpty) {
       throw ArgumentError('Title cannot be empty');
     }
-    return TodoListCreated(Ulid(), aggregateId, timestamp, title);
+    return TodoListCreated(newId(), aggregateId, timestamp, title);
   }
 
   @override
@@ -134,7 +137,7 @@ class AddTodoItem extends Command {
   final String itemId;
   final String title;
 
-  AddTodoItem(Ulid aggregateId, DateTime timestamp, this.itemId, this.title)
+  AddTodoItem(ID aggregateId, DateTime timestamp, this.itemId, this.title)
       : super(aggregateId, 'TodoList', timestamp);
 
   @override
@@ -151,7 +154,7 @@ class AddTodoItem extends Command {
       throw ArgumentError('Item ID already exists');
     }
 
-    return TodoItemAdded(Ulid(), aggregateId, timestamp, itemId, title);
+    return TodoItemAdded(newId(), aggregateId, timestamp, itemId, title);
   }
 
   @override
@@ -170,7 +173,7 @@ class AddTodoItem extends Command {
 class CompleteTodoItem extends Command {
   final String itemId;
 
-  CompleteTodoItem(Ulid aggregateId, DateTime timestamp, this.itemId)
+  CompleteTodoItem(ID aggregateId, DateTime timestamp, this.itemId)
       : super(aggregateId, 'TodoList', timestamp);
 
   @override
@@ -188,7 +191,7 @@ class CompleteTodoItem extends Command {
       throw ArgumentError('Item is already completed');
     }
 
-    return TodoItemCompleted(Ulid(), aggregateId, timestamp, itemId);
+    return TodoItemCompleted(newId(), aggregateId, timestamp, itemId);
   }
 
   @override
@@ -257,8 +260,8 @@ class TodoListAggregate extends Aggregate {
 void main() async {
   // Set up the event sourcing system
   final system = EventSourcingSystem(
-    eventStoreFactory: EventStores.memory,
-    snapshotStore: SnapshotStores.memory(),
+    eventStoreFactory: isarEventStoreFactory('isar.db'),
+    snapshotStoreFactory: inMemorySnapshotStoreFactory(),
   )..registerAggregate<TodoListAggregate>(TodoListAggregate.new);
 
   // Start processing commands
@@ -266,7 +269,7 @@ void main() async {
 
   try {
     // Create a new todo list
-    final listId = Ulid();
+    final listId = newId();
     print('\nCreating todo list with ID: $listId');
     final createList = CreateTodoList(listId, DateTime.now(), 'My Todo List');
     await for (var event in system.publish(createList)) {

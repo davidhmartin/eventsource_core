@@ -4,8 +4,6 @@ import 'event_store.dart';
 import 'snapshot_store.dart';
 import 'stores/null_snapshot_store.dart';
 
-typedef SnapshotStoreFactory = SnapshotStore Function();
-
 /// AggregateRepository is used to retrieve aggregates from the event store.
 class AggregateRepository {
   final EventStore _eventStore;
@@ -79,7 +77,7 @@ class AggregateRehydrator<T extends Aggregate> {
     // Try to get the latest snapshot if we have a snapshot store
     JsonMap? snapshot = await _snapshotStore.getLatestSnapshot(id);
     T aggregate = _factory(id);
-    
+
     if (snapshot != null) {
       aggregate.deserializeState(snapshot);
     }

@@ -1,3 +1,4 @@
+import 'package:eventsource_core/src/snapshot_store.dart';
 import 'package:ulid/ulid.dart';
 
 import 'event.dart';
@@ -26,4 +27,7 @@ ID newId() => Ulid().toString();
 ID idFromString(String str) => str;
 
 /// Factory function for creating an EventStore
-typedef EventStoreFactory = EventStore Function();
+typedef EventStoreFactory = Future<EventStore> Function();
+
+/// Factory function for creating a SnapshotStore
+typedef SnapshotStoreFactory = Future<SnapshotStore> Function();

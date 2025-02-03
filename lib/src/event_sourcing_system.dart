@@ -1,39 +1,40 @@
 import 'package:eventsource_core/eventsource_core.dart';
-import 'package:eventsource_core/src/aggregate_repository.dart';
-import 'package:eventsource_core/typedefs.dart';
-import 'package:eventsource_core/src/snapshot_store.dart';
 
 /// A facade that provides a unified interface to the event sourcing system.
 /// This is the primary entry point for applications using the event sourcing framework.
 class EventSourcingSystem {
-  final AggregateRepository _aggregateRepository;
-  final CommandProcessor _commandProcessor;
+  late AggregateRepository _aggregateRepository;
+  late CommandProcessor _commandProcessor;
   bool _isStarted = false;
 
   /// Create a new event sourcing system with the specified storage implementations.
   EventSourcingSystem({
     required EventStoreFactory eventStoreFactory,
-    required SnapshotStore snapshotStore,
-  }) : this._(eventStoreFactory, snapshotStore);
+    required SnapshotStoreFactory snapshotStoreFactory,
+  }) {
+    _initializeComponents(eventStoreFactory, snapshotStoreFactory);
+  }
 
-  EventSourcingSystem._(
+  Future<void> _initializeComponents(
     EventStoreFactory eventStoreFactory,
-    SnapshotStore snapshotStore,
-  ) : this.__(_createComponents(eventStoreFactory, snapshotStore));
+    SnapshotStoreFactory snapshotStoreFactory,
+  ) async {
+    final components =
+        await _createComponents(eventStoreFactory, snapshotStoreFactory);
+    _aggregateRepository = components.repository;
+    _commandProcessor = components.processor;
+  }
 
-  EventSourcingSystem.__(
-    ({AggregateRepository repository, CommandProcessor processor}) components,
-  )   : _aggregateRepository = components.repository,
-        _commandProcessor = components.processor;
-
-  static ({
-    AggregateRepository repository,
-    CommandProcessor processor,
-  }) _createComponents(
+  static Future<
+      ({
+        AggregateRepository repository,
+        CommandProcessor processor,
+      })> _createComponents(
     EventStoreFactory eventStoreFactory,
-    SnapshotStore snapshotStore,
-  ) {
-    final eventStore = eventStoreFactory();
+    SnapshotStoreFactory snapshotStoreFactory,
+  ) async {
+    final eventStore = await eventStoreFactory();
+    final snapshotStore = await snapshotStoreFactory();
     final repository = AggregateRepository(eventStore, snapshotStore);
     final processor = CommandProcessor(eventStore, repository);
     return (repository: repository, processor: processor);

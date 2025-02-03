@@ -1,5 +1,6 @@
 import 'dart:collection';
 
+import 'package:eventsource_core/src/snapshot_store.dart';
 import 'package:eventsource_core/typedefs.dart';
 
 import '../../aggregate.dart';

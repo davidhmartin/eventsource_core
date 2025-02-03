@@ -1,20 +1,18 @@
-import 'package:eventsource_core/src/aggregate_repository.dart';
 import 'package:eventsource_core/typedefs.dart';
 
-import '../../aggregate.dart';
+import '../snapshot_store.dart';
 
-// Snapshotting the aggregate is an optimization, as the aggregate can always be
-// rehydrated from the event store. Using an AggregateStore with a null SnapshotStore
-// will result in the aggregate being rehydrated from the event store every time
-// an aggregate is requested.
+/// A snapshot store that does nothing. Used when no snapshot store is provided.
 class NullSnapshotStore implements SnapshotStore {
+  const NullSnapshotStore();
+
   @override
-  Future<void> saveSnapshot(Aggregate aggregate) async {
+  Future<void> saveSnapshot(ID aggregateId, String type, JsonMap state) async {
     // Do nothing
   }
 
   @override
-  Future<Aggregate?> getLatestSnapshot(ID aggregateId) async {
-    return Future.value(null);
+  Future<JsonMap?> getLatestSnapshot(ID aggregateId) async {
+    return null;
   }
 }

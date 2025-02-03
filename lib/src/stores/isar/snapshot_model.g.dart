@@ -48,7 +48,7 @@ const SnapshotModelSchema = CollectionSchema(
       id: -4286146723201826268,
       name: r'aggregateId',
       unique: true,
-      replace: false,
+      replace: true,
       properties: [
         IndexPropertySchema(
           name: r'aggregateId',

@@ -19,10 +19,8 @@ typedef ID = String;
 /// Maximum safe integer that works across all platforms (including web)
 const int maxInt = (1 << 53) - 1; // 2^53 - 1
 
-/// Create a new unique ID
-String newId() {
-  return DateTime.now().microsecondsSinceEpoch.toString();
-}
+/// Create a new ID (Ulid)
+ID newId() => Ulid().toString();
 
 /// Convert a string to an ID
 ID idFromString(String str) => str;

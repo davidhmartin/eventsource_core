@@ -13,45 +13,43 @@ import 'isar/event_model.dart';
 class IsarEventStore implements EventStore {
   final Isar _isar;
   final _lock = Lock();
-  final EventDeserializer _eventFactory;
   final List<EventSubscriber> _subscribers = [];
 
-  IsarEventStore._(this._isar, {EventDeserializer? eventFactory})
-      : _eventFactory = eventFactory ?? Event.fromJson;
+  IsarEventStore._(this._isar);
 
-  static Future<IsarEventStore> create(
-      {String? directory, EventDeserializer? eventFactory}) async {
-    final dir = directory ?? path.join(Directory.systemTemp.path, 'eventsource');
+  static Future<IsarEventStore> create({String? directory}) async {
+    final dir = directory ?? Directory.systemTemp.path;
     final isar = await Isar.open(
       [EventModelSchema],
       directory: dir,
+      name: 'events',
     );
-    return IsarEventStore._(isar, eventFactory: eventFactory);
-  }
-
-  Future<int> _getCurrentVersion(ID aggregateId) async {
-    final lastEvent = await _isar.eventModels
-        .filter()
-        .aggregateIdEqualTo(aggregateId)
-        .sortByVersionDesc()
-        .findFirst();
-    return lastEvent?.version ?? -1;
+    return IsarEventStore._(isar);
   }
 
   @override
-  Future<void> appendEvents(
-      ID aggregateId, List<Event> events, int expectedVersion) async {
-    return _lock.synchronized(() async {
-      final currentVersion = await _getCurrentVersion(aggregateId);
+  Future<void> appendEvents(ID aggregateId, List<Event> events, int expectedVersion) async {
+    await _lock.synchronized(() async {
+      // Get the latest version for this aggregate
+      final latestEvent = await _isar.eventModels
+          .filter()
+          .aggregateIdEqualTo(aggregateId.toString())
+          .sortByVersionDesc()
+          .findFirst();
+
+      final currentVersion = latestEvent?.version ?? -1;
       if (currentVersion != expectedVersion) {
         throw ConcurrencyException(
             'Expected version $expectedVersion but found $currentVersion');
       }
 
+      // Convert events to models and store them
       await _isar.writeTxn(() async {
         for (final event in events) {
           final model = EventModel.fromEvent(event);
           await _isar.eventModels.put(model);
+          
+          // Notify subscribers
           for (final subscriber in _subscribers) {
             subscriber.onEvent(event);
           }
@@ -62,8 +60,14 @@ class IsarEventStore implements EventStore {
 
   @override
   Stream<Event> getEvents(ID aggregateId,
-      {int? fromVersion, int? toVersion, String? origin, bool Function(Event)? filter}) async* {
-    var query = _isar.eventModels.filter().aggregateIdEqualTo(aggregateId);
+      {int? fromVersion,
+      int? toVersion,
+      String? origin,
+      bool Function(Event)? filter}) async* {
+    // Build the query
+    var query = _isar.eventModels
+        .filter()
+        .aggregateIdEqualTo(aggregateId.toString());
 
     if (fromVersion != null) {
       query = query.versionGreaterThan(fromVersion, include: true);
@@ -75,9 +79,10 @@ class IsarEventStore implements EventStore {
       query = query.originEqualTo(origin);
     }
 
+    // Execute query and get results
     final models = await query.sortByVersion().findAll();
     for (final model in models) {
-      final event = model.toEvent(_eventFactory);
+      final event = model.toEvent();
       if (filter == null || filter(event)) {
         yield event;
       }

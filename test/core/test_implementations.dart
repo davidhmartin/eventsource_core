@@ -104,6 +104,9 @@ class TestAggregate extends Aggregate {
   @override
   void deserializeState(JsonMap json) {
     data = json['data'] as String? ?? '';
+    if (json['version'] != null) {
+      version = json['version'] as int;
+    }
   }
 
   @override

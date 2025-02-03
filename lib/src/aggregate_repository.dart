@@ -1,6 +1,7 @@
 import '../aggregate.dart';
 import '../typedefs.dart';
 import 'event_store.dart';
+import 'snapshot_store.dart';
 import 'stores/null_snapshot_store.dart';
 
 typedef SnapshotStoreFactory = SnapshotStore Function();
@@ -17,7 +18,7 @@ class AggregateRepository {
   /// Register a factory for a specific aggregate type
   AggregateRepository register<T extends Aggregate>(
       AggregateFactory<T> factory) {
-    final tempAggregate = factory(ID());
+    final tempAggregate = factory(newId());
     final aggregateType = tempAggregate.type;
 
     _factories[aggregateType] = factory;
@@ -40,6 +41,15 @@ class AggregateRepository {
     return _getRehydrator(aggregateType).getAggregate(id, create, toVersion);
   }
 
+  /// Save a snapshot of the aggregate's current state
+  Future<void> saveSnapshot(Aggregate aggregate) async {
+    await _snapshotStore.saveSnapshot(
+      aggregate.id,
+      aggregate.type,
+      aggregate.toJson(),
+    );
+  }
+
   /// Get the store for a specific aggregate type
   AggregateRehydrator _getRehydrator(String aggregateType) {
     final store = _rehydrators[aggregateType];
@@ -57,76 +67,49 @@ class AggregateRepository {
 /// a snapshot store can be used to optimize the retrieval of aggregates by
 /// allowing the store to retrieve the latest snapshot before re-playing
 /// events.
-class AggregateRehydrator<TAggregate extends Aggregate> {
+class AggregateRehydrator<T extends Aggregate> {
   final EventStore _eventStore;
-  final AggregateFactory<TAggregate> _createEmptyAggregate;
+  final AggregateFactory<T> _factory;
   final SnapshotStore _snapshotStore;
 
-  /// Create a new instance of the aggregate repository
-  ///
-  /// [eventStore] The event store to use
-  /// [createEmptyAggregate] Function to create empty aggregates
-  /// [snapshotStore] Optional store to use for snapshots
-  AggregateRehydrator(this._eventStore, this._createEmptyAggregate,
-      [SnapshotStore? snapshotStore])
-      : _snapshotStore = snapshotStore ?? NullSnapshotStore();
+  AggregateRehydrator(this._eventStore, this._factory, this._snapshotStore);
 
   /// Get an aggregate by its ID, using snapshots if available
-  Future<Aggregate> getAggregate(ID id, bool create, int toVersion) async {
-    // todo do we need "create" at all?
-
-    if (toVersion == 0) {
-      return _createEmptyAggregate(id);
-    }
-    create ??= false;
+  Future<T> getAggregate(ID id, bool create, int toVersion) async {
     // Try to get the latest snapshot if we have a snapshot store
-    Aggregate? agg = await _snapshotStore.getLatestSnapshot(id);
-    Aggregate aggregate = agg ?? _createEmptyAggregate(id);
+    JsonMap? snapshot = await _snapshotStore.getLatestSnapshot(id);
+    T aggregate = _factory(id);
+    
+    if (snapshot != null) {
+      aggregate.deserializeState(snapshot);
+    }
 
-    int to = toVersion ?? maxInt;
     int from = aggregate.version;
-
-    if (to == from) {
+    if (from >= toVersion) {
       return aggregate;
     }
 
-    bool saveSnapshot;
-
-    if (to < from) {
-      // The caller has asked for a version of the aggregate, from prior to the
-      // snapshot's version. In this case, we need to re-create the aggregate
-      // from version 0 up to the requested version.
-      aggregate = _createEmptyAggregate(id);
-      from = 0;
-      saveSnapshot = false; // Don't save a snapshot of the re-created aggregate
-    } else {
-      saveSnapshot = true;
+    // Get events from the event store
+    final events = await _eventStore.getEvents(id, fromVersion: from).toList();
+    if (events.isEmpty) {
+      if (!create) {
+        throw StateError('Aggregate not found: $id');
+      }
+      return aggregate;
     }
 
-    // Get any events after the snapshot version
-    final events =
-        _eventStore.getEvents(id, fromVersion: from + 1, toVersion: to);
-
-    await for (final event in events) {
+    // Apply events to the aggregate
+    for (final event in events) {
+      if (event.version > toVersion) {
+        break;
+      }
       aggregate.applyEvent(event);
     }
 
-    if (saveSnapshot) {
-      await _snapshotStore.saveSnapshot(aggregate);
+    // Save a snapshot if we've applied events
+    if (events.isNotEmpty) {
+      await _snapshotStore.saveSnapshot(id, aggregate.type, aggregate.toJson());
     }
     return aggregate;
   }
-
-  /// Create a new empty aggregate with the given ID
-  //TAggregate createEmptyAggregate(ID id) => _createEmptyAggregate(id);
-}
-
-// SnapshotStore is used by AggregateStore to store and retrieve aggregate
-// snapshots.
-abstract class SnapshotStore {
-  /// Save a snapshot
-  Future<void> saveSnapshot(Aggregate aggregate);
-
-  /// Get latest snapshot
-  Future<Aggregate?> getLatestSnapshot(ID aggregateId);
 }

@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'package:isar/isar.dart';
-import '../../../aggregate.dart';
+import '../../../typedefs.dart';
 
 part 'snapshot_model.g.dart';
 
 @Collection()
 class SnapshotModel {
-  Id? id;
+  Id id = Isar.autoIncrement;
 
   @Index(unique: true, replace: true)
   late String aggregateId;
@@ -19,18 +19,16 @@ class SnapshotModel {
 
   SnapshotModel();
 
-  factory SnapshotModel.fromAggregate(Aggregate aggregate) {
+  factory SnapshotModel.create(String aggregateId, String type, JsonMap state) {
     return SnapshotModel()
-      ..id = Id(fastHash(aggregate.id))
-      ..aggregateId = aggregate.id
-      ..type = aggregate.type
-      ..state = jsonEncode(aggregate.toJson())
-      ..version = aggregate.version;
+      ..aggregateId = aggregateId
+      ..type = type
+      ..state = jsonEncode(state)
+      ..version = state['version'] as int;
   }
 
-  Aggregate toAggregate() {
-    final jsonMap = jsonDecode(state) as Map<String, dynamic>;
-    return Aggregate.fromJson(jsonMap);
+  JsonMap toJson() {
+    return jsonDecode(state) as JsonMap;
   }
 }
 

@@ -12,21 +12,16 @@ class InMemorySnapshotStore implements SnapshotStore {
   final _lock = Lock();
 
   @override
-  Future<void> saveSnapshot(Aggregate aggregate) async {
+  Future<void> saveSnapshot(ID aggregateId, String type, JsonMap state) async {
     return _lock.synchronized(() async {
-      _snapshots[aggregate.id] = aggregate.toJson();
+      _snapshots[aggregateId] = state;
     });
   }
 
   @override
-  Future<Aggregate?> getLatestSnapshot(ID aggregateId) async {
+  Future<JsonMap?> getLatestSnapshot(ID aggregateId) async {
     return _lock.synchronized(() async {
-      final json = _snapshots[aggregateId];
-      if (json != null) {
-        final state = Aggregate.fromJson(json);
-        return Future.value(state);
-      }
-      return Future.value(null);
+      return Future.value(_snapshots[aggregateId]);
     });
   }
 }

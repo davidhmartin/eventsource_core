@@ -26,6 +26,9 @@ abstract class Aggregate {
   /// Current version (last applied event sequence number)
   int get version => _version;
 
+  @protected
+  set version(int value) => _version = value;
+
   /// Type identifier for this aggregate. Subclasses must override this to
   /// return a unique type name.
   String get type;
@@ -42,54 +45,11 @@ abstract class Aggregate {
     return map;
   }
 
-  /// Create an Aggregate from a JSON map
-  /// The JSON must include a 'type' field that matches an aggregate type
-  factory Aggregate.fromJson(JsonMap json) {
-    final type = json['type'] as String?;
-    if (type == null) {
-      throw ArgumentError('JSON missing required "type" field');
-    }
-
-    final factory = _factories[type];
-    if (factory == null) {
-      throw ArgumentError('Unknown aggregate type: $type');
-    }
-
-    Aggregate aggregate = factory(json);
-    aggregate.deserializeState(json);
-    return aggregate;
-  }
-
   // Called by toJson. Subclasses override to add aggregate state to the json map.
   void serializeState(JsonMap json);
 
   // Called by fromJson. Subclasses override to set aggregate state from the json map.
   void deserializeState(JsonMap json);
-
-  /// Register a factory for creating aggregates of a specific type
-  ///
-  /// This method must be called explicitly for each aggregate type before it can be
-  /// deserialized from JSON. Typically, this is done during application initialization:
-  ///
-  /// ```dart
-  /// void initializeEventSourcing() {
-  ///   Aggregate.registerFactory('UserAggregate', UserAggregate.fromJson);
-  ///   Aggregate.registerFactory('OrderAggregate', OrderAggregate.fromJson);
-  /// }
-  /// ```
-  ///
-  /// If an aggregate type is not registered, [Aggregate.fromJson] will throw an
-  /// [ArgumentError] when attempting to deserialize that type.
-  ///
-  /// [type] must match the value returned by the aggregate's [type] getter.
-  /// [factory] must be a function that takes a JSON map and returns an instance
-  /// of the appropriate aggregate type.
-  static void registerFactory(
-      String type, Aggregate Function(JsonMap) factory) {
-    _factories[type] = factory;
-  }
-
-  static final Map<String, Aggregate Function(JsonMap)> _factories = {};
 
   /// Apply an event to the aggregate
   /// This is called both when applying new events and when rehydrating from history
@@ -99,78 +59,17 @@ abstract class Aggregate {
           'Event aggregate ID ${event.aggregateId} does not match aggregate ID $id');
     }
 
-    if (event.version != version + 1) {
+    if (event.version <= _version) {
       throw ArgumentError(
-          'Event version ${event.version} is not sequential with aggregate version $version');
+          'Event version ${event.version} is not greater than aggregate version $_version');
     }
 
-    _version = event.version;
     applyEventToState(event);
+    _version = event.version;
   }
 
-  /// Internal method that each aggregate must implement to update its state
-  /// based on the event type
+  /// Apply an event to the aggregate's state
+  /// This is called by [applyEvent] after validating the event
+  /// Subclasses must override this to apply the event to their state
   void applyEventToState(Event event);
 }
-
-class AggregateSerializer {
-  // Map<String, Aggregate Function(JsonMap)> get serializers => _serializers;
-
-  // static Map<String, Aggregate Function(JsonMap)> _serializers = {
-  //   'BoxAggregate': (json) => BoxAggregate.fromJson(json),
-  //   // Add other aggregate types here
-  // };
-
-  // an instance variable of type Map<String, Aggregate Function(JsonMap)>
-  Map<String, Aggregate Function(JsonMap)> _serializers = {};
-
-  Aggregate fromJson(JsonMap json) {
-    final type = json['_type'] as String;
-    final serializer = _serializers[type];
-
-    if (serializer == null) {
-      throw Exception('Unknown aggregate type: $type');
-    }
-
-    return serializer(json);
-  }
-
-  JsonMap toJson(Aggregate aggregate) {
-    return aggregate.toJson();
-  }
-}
-
-// class UserAggregate extends Aggregate {
-//   final String name;
-//   final String email;
-
-//   UserAggregate(ID id, this.name, this.email) : super(id);
-
-//   @override
-//   String get type => 'UserAggregate';
-
-//   @override
-//   factory UserAggregate.fromJson(JsonMap json) {
-//     return UserAggregate._(json);
-//   }
-
-//   // Private constructor that uses the base class's fromJsonBase
-//   UserAggregate._(JsonMap json)
-//       : name = json['name'] as String,
-//         email = json['email'] as String,
-//         super.fromJsonBase(json);
-
-//   @override
-//   JsonMap toJson() => {
-//         'type': type,
-//         'id': id.toString(),
-//         'version': version,
-//         'name': name,
-//         'email': email,
-//       };
-
-//   @override
-//   void applyEventToState(Event event) {
-//     // TODO: implement applyEventToState
-//   }
-// }

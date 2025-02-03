@@ -1,44 +1,37 @@
-import 'dart:io';
+import 'package:eventsource_core/typedefs.dart';
 import 'package:isar/isar.dart';
-import 'package:path/path.dart' as path;
-import '../../aggregate.dart';
-import '../../typedefs.dart';
-import '../aggregate_repository.dart';
-import '../lock.dart';
+import '../snapshot_store.dart';
 import 'isar/snapshot_model.dart';
 
 /// Isar implementation of SnapshotStore
 class IsarSnapshotStore implements SnapshotStore {
   final Isar _isar;
-  final _lock = Lock();
 
   IsarSnapshotStore._(this._isar);
 
   static Future<IsarSnapshotStore> create({String? directory}) async {
-    final dir = directory ?? path.join(Directory.systemTemp.path, 'eventsource');
     final isar = await Isar.open(
       [SnapshotModelSchema],
-      directory: dir,
+      directory: directory ?? '.',
     );
     return IsarSnapshotStore._(isar);
   }
 
   @override
-  Future<Aggregate?> getLatestSnapshot(ID aggregateId) async {
-    return await _lock.synchronized(() async {
-      final model = await _isar.snapshotModels.get(fastHash(aggregateId));
-      return model?.toAggregate();
+  Future<void> saveSnapshot(ID aggregateId, String type, JsonMap state) async {
+    final snapshot = SnapshotModel.create(aggregateId, type, state);
+    await _isar.writeTxn(() async {
+      await _isar.snapshotModels.put(snapshot);
     });
   }
 
   @override
-  Future<void> saveSnapshot(Aggregate aggregate) async {
-    await _lock.synchronized(() async {
-      final model = SnapshotModel.fromAggregate(aggregate);
-      await _isar.writeTxn(() async {
-        await _isar.snapshotModels.put(model);
-      });
-    });
+  Future<JsonMap?> getLatestSnapshot(ID aggregateId) async {
+    final snapshot = await _isar.snapshotModels
+        .where()
+        .aggregateIdEqualTo(aggregateId)
+        .findFirst();
+    return snapshot?.toJson();
   }
 
   Future<void> dispose() async {

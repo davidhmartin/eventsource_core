@@ -18,9 +18,8 @@ class EventModel {
   @Index()
   late int version;
 
-  late String eventType;
-  late String data;
-  late String metadata;
+  @Index()
+  late String type;
 
   @Index()
   late int timestamp;
@@ -28,32 +27,26 @@ class EventModel {
   @Index()
   late String origin;
 
+  /// The complete serialized event
+  late String eventJson;
+
   EventModel();
 
   factory EventModel.fromEvent(Event event) {
+    final json = event.toJson();
     return EventModel()
-      ..eventId = event.id
-      ..aggregateId = event.aggregateId
+      ..eventId = event.id.toString()
+      ..aggregateId = event.aggregateId.toString()
       ..version = event.version
-      ..eventType = event.type
-      ..data = jsonEncode(event.data)
-      ..metadata = jsonEncode(event.metadata)
+      ..type = event.type
       ..timestamp = event.timestamp.millisecondsSinceEpoch
-      ..origin = event.origin;
+      ..origin = event.origin
+      ..eventJson = jsonEncode(json);
   }
 
-  Event toEvent(EventDeserializer eventFactory) {
-    final json = {
-      'id': eventId,
-      'aggregateId': aggregateId,
-      'version': version,
-      'eventType': eventType,
-      'data': jsonDecode(data),
-      'metadata': jsonDecode(metadata),
-      'timestamp': DateTime.fromMillisecondsSinceEpoch(timestamp),
-      'origin': origin,
-    };
-    return eventFactory(json);
+  Event toEvent() {
+    final json = jsonDecode(eventJson) as JsonMap;
+    return Event.fromJson(json);
   }
 }
 

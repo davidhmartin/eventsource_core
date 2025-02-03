@@ -22,38 +22,33 @@ const EventModelSchema = CollectionSchema(
       name: r'aggregateId',
       type: IsarType.string,
     ),
-    r'data': PropertySchema(
-      id: 1,
-      name: r'data',
-      type: IsarType.string,
-    ),
     r'eventId': PropertySchema(
-      id: 2,
+      id: 1,
       name: r'eventId',
       type: IsarType.string,
     ),
-    r'eventType': PropertySchema(
-      id: 3,
-      name: r'eventType',
-      type: IsarType.string,
-    ),
-    r'metadata': PropertySchema(
-      id: 4,
-      name: r'metadata',
+    r'eventJson': PropertySchema(
+      id: 2,
+      name: r'eventJson',
       type: IsarType.string,
     ),
     r'origin': PropertySchema(
-      id: 5,
+      id: 3,
       name: r'origin',
       type: IsarType.string,
     ),
     r'timestamp': PropertySchema(
-      id: 6,
+      id: 4,
       name: r'timestamp',
       type: IsarType.long,
     ),
+    r'type': PropertySchema(
+      id: 5,
+      name: r'type',
+      type: IsarType.string,
+    ),
     r'version': PropertySchema(
-      id: 7,
+      id: 6,
       name: r'version',
       type: IsarType.long,
     )
@@ -103,6 +98,19 @@ const EventModelSchema = CollectionSchema(
         )
       ],
     ),
+    r'type': IndexSchema(
+      id: 5117122708147080838,
+      name: r'type',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'type',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
+    ),
     r'timestamp': IndexSchema(
       id: 1852253767416892198,
       name: r'timestamp',
@@ -145,11 +153,10 @@ int _eventModelEstimateSize(
 ) {
   var bytesCount = offsets.last;
   bytesCount += 3 + object.aggregateId.length * 3;
-  bytesCount += 3 + object.data.length * 3;
   bytesCount += 3 + object.eventId.length * 3;
-  bytesCount += 3 + object.eventType.length * 3;
-  bytesCount += 3 + object.metadata.length * 3;
+  bytesCount += 3 + object.eventJson.length * 3;
   bytesCount += 3 + object.origin.length * 3;
+  bytesCount += 3 + object.type.length * 3;
   return bytesCount;
 }
 
@@ -160,13 +167,12 @@ void _eventModelSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeString(offsets[0], object.aggregateId);
-  writer.writeString(offsets[1], object.data);
-  writer.writeString(offsets[2], object.eventId);
-  writer.writeString(offsets[3], object.eventType);
-  writer.writeString(offsets[4], object.metadata);
-  writer.writeString(offsets[5], object.origin);
-  writer.writeLong(offsets[6], object.timestamp);
-  writer.writeLong(offsets[7], object.version);
+  writer.writeString(offsets[1], object.eventId);
+  writer.writeString(offsets[2], object.eventJson);
+  writer.writeString(offsets[3], object.origin);
+  writer.writeLong(offsets[4], object.timestamp);
+  writer.writeString(offsets[5], object.type);
+  writer.writeLong(offsets[6], object.version);
 }
 
 EventModel _eventModelDeserialize(
@@ -177,14 +183,13 @@ EventModel _eventModelDeserialize(
 ) {
   final object = EventModel();
   object.aggregateId = reader.readString(offsets[0]);
-  object.data = reader.readString(offsets[1]);
-  object.eventId = reader.readString(offsets[2]);
-  object.eventType = reader.readString(offsets[3]);
+  object.eventId = reader.readString(offsets[1]);
+  object.eventJson = reader.readString(offsets[2]);
   object.id = id;
-  object.metadata = reader.readString(offsets[4]);
-  object.origin = reader.readString(offsets[5]);
-  object.timestamp = reader.readLong(offsets[6]);
-  object.version = reader.readLong(offsets[7]);
+  object.origin = reader.readString(offsets[3]);
+  object.timestamp = reader.readLong(offsets[4]);
+  object.type = reader.readString(offsets[5]);
+  object.version = reader.readLong(offsets[6]);
   return object;
 }
 
@@ -204,12 +209,10 @@ P _eventModelDeserializeProp<P>(
     case 3:
       return (reader.readString(offset)) as P;
     case 4:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 5:
       return (reader.readString(offset)) as P;
     case 6:
-      return (reader.readLong(offset)) as P;
-    case 7:
       return (reader.readLong(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -555,6 +558,51 @@ extension EventModelQueryWhere
     });
   }
 
+  QueryBuilder<EventModel, EventModel, QAfterWhereClause> typeEqualTo(
+      String type) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'type',
+        value: [type],
+      ));
+    });
+  }
+
+  QueryBuilder<EventModel, EventModel, QAfterWhereClause> typeNotEqualTo(
+      String type) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'type',
+              lower: [],
+              upper: [type],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'type',
+              lower: [type],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'type',
+              lower: [type],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'type',
+              lower: [],
+              upper: [type],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
   QueryBuilder<EventModel, EventModel, QAfterWhereClause> timestampEqualTo(
       int timestamp) {
     return QueryBuilder.apply(this, (query) {
@@ -829,136 +877,6 @@ extension EventModelQueryFilter
     });
   }
 
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> dataEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'data',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> dataGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'data',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> dataLessThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'data',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> dataBetween(
-    String lower,
-    String upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'data',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> dataStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'data',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> dataEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'data',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> dataContains(
-      String value,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'data',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> dataMatches(
-      String pattern,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'data',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> dataIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'data',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> dataIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'data',
-        value: '',
-      ));
-    });
-  }
-
   QueryBuilder<EventModel, EventModel, QAfterFilterCondition> eventIdEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -1091,13 +1009,13 @@ extension EventModelQueryFilter
     });
   }
 
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> eventTypeEqualTo(
+  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> eventJsonEqualTo(
     String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'eventType',
+        property: r'eventJson',
         value: value,
         caseSensitive: caseSensitive,
       ));
@@ -1105,7 +1023,7 @@ extension EventModelQueryFilter
   }
 
   QueryBuilder<EventModel, EventModel, QAfterFilterCondition>
-      eventTypeGreaterThan(
+      eventJsonGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1113,14 +1031,14 @@ extension EventModelQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         include: include,
-        property: r'eventType',
+        property: r'eventJson',
         value: value,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> eventTypeLessThan(
+  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> eventJsonLessThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1128,14 +1046,14 @@ extension EventModelQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.lessThan(
         include: include,
-        property: r'eventType',
+        property: r'eventJson',
         value: value,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> eventTypeBetween(
+  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> eventJsonBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -1144,7 +1062,7 @@ extension EventModelQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
-        property: r'eventType',
+        property: r'eventJson',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -1155,50 +1073,50 @@ extension EventModelQueryFilter
   }
 
   QueryBuilder<EventModel, EventModel, QAfterFilterCondition>
-      eventTypeStartsWith(
+      eventJsonStartsWith(
     String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'eventType',
+        property: r'eventJson',
         value: value,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> eventTypeEndsWith(
+  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> eventJsonEndsWith(
     String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'eventType',
+        property: r'eventJson',
         value: value,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> eventTypeContains(
+  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> eventJsonContains(
       String value,
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.contains(
-        property: r'eventType',
+        property: r'eventJson',
         value: value,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> eventTypeMatches(
+  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> eventJsonMatches(
       String pattern,
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.matches(
-        property: r'eventType',
+        property: r'eventJson',
         wildcard: pattern,
         caseSensitive: caseSensitive,
       ));
@@ -1206,20 +1124,20 @@ extension EventModelQueryFilter
   }
 
   QueryBuilder<EventModel, EventModel, QAfterFilterCondition>
-      eventTypeIsEmpty() {
+      eventJsonIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'eventType',
+        property: r'eventJson',
         value: '',
       ));
     });
   }
 
   QueryBuilder<EventModel, EventModel, QAfterFilterCondition>
-      eventTypeIsNotEmpty() {
+      eventJsonIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'eventType',
+        property: r'eventJson',
         value: '',
       ));
     });
@@ -1274,140 +1192,6 @@ extension EventModelQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> metadataEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'metadata',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition>
-      metadataGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'metadata',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> metadataLessThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'metadata',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> metadataBetween(
-    String lower,
-    String upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'metadata',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition>
-      metadataStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'metadata',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> metadataEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'metadata',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> metadataContains(
-      String value,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'metadata',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> metadataMatches(
-      String pattern,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'metadata',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition>
-      metadataIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'metadata',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterFilterCondition>
-      metadataIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'metadata',
-        value: '',
       ));
     });
   }
@@ -1597,6 +1381,136 @@ extension EventModelQueryFilter
     });
   }
 
+  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> typeEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'type',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> typeGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'type',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> typeLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'type',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> typeBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'type',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> typeStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'type',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> typeEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'type',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> typeContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'type',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> typeMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'type',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> typeIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'type',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<EventModel, EventModel, QAfterFilterCondition> typeIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'type',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<EventModel, EventModel, QAfterFilterCondition> versionEqualTo(
       int value) {
     return QueryBuilder.apply(this, (query) {
@@ -1672,18 +1586,6 @@ extension EventModelQuerySortBy
     });
   }
 
-  QueryBuilder<EventModel, EventModel, QAfterSortBy> sortByData() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'data', Sort.asc);
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterSortBy> sortByDataDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'data', Sort.desc);
-    });
-  }
-
   QueryBuilder<EventModel, EventModel, QAfterSortBy> sortByEventId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'eventId', Sort.asc);
@@ -1696,27 +1598,15 @@ extension EventModelQuerySortBy
     });
   }
 
-  QueryBuilder<EventModel, EventModel, QAfterSortBy> sortByEventType() {
+  QueryBuilder<EventModel, EventModel, QAfterSortBy> sortByEventJson() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'eventType', Sort.asc);
+      return query.addSortBy(r'eventJson', Sort.asc);
     });
   }
 
-  QueryBuilder<EventModel, EventModel, QAfterSortBy> sortByEventTypeDesc() {
+  QueryBuilder<EventModel, EventModel, QAfterSortBy> sortByEventJsonDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'eventType', Sort.desc);
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterSortBy> sortByMetadata() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'metadata', Sort.asc);
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterSortBy> sortByMetadataDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'metadata', Sort.desc);
+      return query.addSortBy(r'eventJson', Sort.desc);
     });
   }
 
@@ -1741,6 +1631,18 @@ extension EventModelQuerySortBy
   QueryBuilder<EventModel, EventModel, QAfterSortBy> sortByTimestampDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'timestamp', Sort.desc);
+    });
+  }
+
+  QueryBuilder<EventModel, EventModel, QAfterSortBy> sortByType() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'type', Sort.asc);
+    });
+  }
+
+  QueryBuilder<EventModel, EventModel, QAfterSortBy> sortByTypeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'type', Sort.desc);
     });
   }
 
@@ -1771,18 +1673,6 @@ extension EventModelQuerySortThenBy
     });
   }
 
-  QueryBuilder<EventModel, EventModel, QAfterSortBy> thenByData() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'data', Sort.asc);
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterSortBy> thenByDataDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'data', Sort.desc);
-    });
-  }
-
   QueryBuilder<EventModel, EventModel, QAfterSortBy> thenByEventId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'eventId', Sort.asc);
@@ -1795,15 +1685,15 @@ extension EventModelQuerySortThenBy
     });
   }
 
-  QueryBuilder<EventModel, EventModel, QAfterSortBy> thenByEventType() {
+  QueryBuilder<EventModel, EventModel, QAfterSortBy> thenByEventJson() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'eventType', Sort.asc);
+      return query.addSortBy(r'eventJson', Sort.asc);
     });
   }
 
-  QueryBuilder<EventModel, EventModel, QAfterSortBy> thenByEventTypeDesc() {
+  QueryBuilder<EventModel, EventModel, QAfterSortBy> thenByEventJsonDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'eventType', Sort.desc);
+      return query.addSortBy(r'eventJson', Sort.desc);
     });
   }
 
@@ -1816,18 +1706,6 @@ extension EventModelQuerySortThenBy
   QueryBuilder<EventModel, EventModel, QAfterSortBy> thenByIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.desc);
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterSortBy> thenByMetadata() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'metadata', Sort.asc);
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QAfterSortBy> thenByMetadataDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'metadata', Sort.desc);
     });
   }
 
@@ -1855,6 +1733,18 @@ extension EventModelQuerySortThenBy
     });
   }
 
+  QueryBuilder<EventModel, EventModel, QAfterSortBy> thenByType() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'type', Sort.asc);
+    });
+  }
+
+  QueryBuilder<EventModel, EventModel, QAfterSortBy> thenByTypeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'type', Sort.desc);
+    });
+  }
+
   QueryBuilder<EventModel, EventModel, QAfterSortBy> thenByVersion() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'version', Sort.asc);
@@ -1877,13 +1767,6 @@ extension EventModelQueryWhereDistinct
     });
   }
 
-  QueryBuilder<EventModel, EventModel, QDistinct> distinctByData(
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'data', caseSensitive: caseSensitive);
-    });
-  }
-
   QueryBuilder<EventModel, EventModel, QDistinct> distinctByEventId(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -1891,17 +1774,10 @@ extension EventModelQueryWhereDistinct
     });
   }
 
-  QueryBuilder<EventModel, EventModel, QDistinct> distinctByEventType(
+  QueryBuilder<EventModel, EventModel, QDistinct> distinctByEventJson(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'eventType', caseSensitive: caseSensitive);
-    });
-  }
-
-  QueryBuilder<EventModel, EventModel, QDistinct> distinctByMetadata(
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'metadata', caseSensitive: caseSensitive);
+      return query.addDistinctBy(r'eventJson', caseSensitive: caseSensitive);
     });
   }
 
@@ -1915,6 +1791,13 @@ extension EventModelQueryWhereDistinct
   QueryBuilder<EventModel, EventModel, QDistinct> distinctByTimestamp() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'timestamp');
+    });
+  }
+
+  QueryBuilder<EventModel, EventModel, QDistinct> distinctByType(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'type', caseSensitive: caseSensitive);
     });
   }
 
@@ -1939,27 +1822,15 @@ extension EventModelQueryProperty
     });
   }
 
-  QueryBuilder<EventModel, String, QQueryOperations> dataProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'data');
-    });
-  }
-
   QueryBuilder<EventModel, String, QQueryOperations> eventIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'eventId');
     });
   }
 
-  QueryBuilder<EventModel, String, QQueryOperations> eventTypeProperty() {
+  QueryBuilder<EventModel, String, QQueryOperations> eventJsonProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'eventType');
-    });
-  }
-
-  QueryBuilder<EventModel, String, QQueryOperations> metadataProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'metadata');
+      return query.addPropertyName(r'eventJson');
     });
   }
 
@@ -1972,6 +1843,12 @@ extension EventModelQueryProperty
   QueryBuilder<EventModel, int, QQueryOperations> timestampProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'timestamp');
+    });
+  }
+
+  QueryBuilder<EventModel, String, QQueryOperations> typeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'type');
     });
   }
 

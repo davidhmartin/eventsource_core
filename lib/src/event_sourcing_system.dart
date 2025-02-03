@@ -1,5 +1,7 @@
 import 'package:eventsource_core/eventsource_core.dart';
 import 'package:eventsource_core/src/aggregate_repository.dart';
+import 'package:eventsource_core/typedefs.dart';
+import 'package:eventsource_core/src/snapshot_store.dart';
 
 /// A facade that provides a unified interface to the event sourcing system.
 /// This is the primary entry point for applications using the event sourcing framework.

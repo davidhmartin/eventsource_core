@@ -1,9 +1,6 @@
-import 'package:eventsource_core/eventsource_core.dart';
-import 'package:eventsource_core/src/stores/memory_event_store.dart';
-import 'package:eventsource_core/src/stores/null_snapshot_store.dart';
-import 'package:eventsource_core/src/stores/store_factories.dart';
-import 'package:ulid/ulid.dart';
 import 'package:args/args.dart';
+import 'package:eventsource_core/eventsource_core.dart';
+import 'package:eventsource_core/src/stores/store_factories.dart';
 import 'package:isar/isar.dart';
 
 // Value object for a todo item
@@ -398,14 +395,16 @@ void main(List<String> args) async {
 
     // Set up the event sourcing system
     final system = EventSourcingSystem(
-      eventStoreFactory: getEventStoreFactory(eventStoreType, dbPath),
-      snapshotStoreFactory: getSnapshotStoreFactory(snapshotStoreType),
-    );
+        getEventStoreFactory(eventStoreType, dbPath),
+        getSnapshotStoreFactory(snapshotStoreType));
 
     // Register event types
-    Event.registerFactory('TodoListCreated', (json) => TodoListCreated.fromJson(json));
-    Event.registerFactory('TodoItemAdded', (json) => TodoItemAdded.fromJson(json));
-    Event.registerFactory('TodoItemCompleted', (json) => TodoItemCompleted.fromJson(json));
+    Event.registerFactory(
+        'TodoListCreated', (json) => TodoListCreated.fromJson(json));
+    Event.registerFactory(
+        'TodoItemAdded', (json) => TodoItemAdded.fromJson(json));
+    Event.registerFactory(
+        'TodoItemCompleted', (json) => TodoItemCompleted.fromJson(json));
 
     // Register aggregate type and start the system
     await system.registerAggregate<TodoListAggregate>(TodoListAggregate.new);

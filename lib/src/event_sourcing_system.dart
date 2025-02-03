@@ -9,11 +9,10 @@ class EventSourcingSystem {
   late final Future<void> _initialized;
 
   /// Create a new event sourcing system with the specified storage implementations.
-  EventSourcingSystem({
-    required EventStoreFactory eventStoreFactory,
-    required SnapshotStoreFactory snapshotStoreFactory,
-  }) {
-    _initialized = _initializeComponents(eventStoreFactory, snapshotStoreFactory);
+  EventSourcingSystem(EventStoreFactory eventStoreFactory,
+      SnapshotStoreFactory snapshotStoreFactory) {
+    _initialized =
+        _initializeComponents(eventStoreFactory, snapshotStoreFactory);
   }
 
   /// Returns a Future that completes when the system is fully initialized
@@ -23,7 +22,8 @@ class EventSourcingSystem {
     EventStoreFactory eventStoreFactory,
     SnapshotStoreFactory snapshotStoreFactory,
   ) async {
-    final components = await _createComponents(eventStoreFactory, snapshotStoreFactory);
+    final components =
+        await _createComponents(eventStoreFactory, snapshotStoreFactory);
     _aggregateRepository = components.repository;
     _commandProcessor = components.processor;
   }
@@ -44,7 +44,8 @@ class EventSourcingSystem {
   }
 
   /// Register an aggregate type with the system
-  Future<void> registerAggregate<T extends Aggregate>(AggregateFactory<T> factory) async {
+  Future<void> registerAggregate<T extends Aggregate>(
+      AggregateFactory<T> factory) async {
     await _initialized;
     _aggregateRepository.register<T>(factory);
   }

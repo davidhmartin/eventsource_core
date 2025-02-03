@@ -3,28 +3,36 @@ import 'dart:collection';
 import '../../event.dart';
 import '../../typedefs.dart';
 import '../event_store.dart';
+import '../event_subscription.dart';
+import '../exceptions.dart';
 import '../lock.dart';
 
 /// In-memory implementation of EventStore
 class InMemoryEventStore implements EventStore {
   final _events = HashMap<ID, List<Event>>();
   final _lock = Lock();
+  final List<EventSubscriber> _subscribers = [];
 
   @override
   Future<void> appendEvents(
       ID aggregateId, List<Event> events, int expectedVersion) async {
     await _lock.synchronized(() {
-      final existingEvents = _events[aggregateId] ?? [];
-      if (existingEvents.isEmpty) {
+      final currentEvents = _events[aggregateId] ?? [];
+      if (currentEvents.isEmpty) {
         _events[aggregateId] =
             events.toList(); // Create new list if none exists
       } else {
         // Version check
-        if (existingEvents.length != expectedVersion) {
+        if (currentEvents.length != expectedVersion) {
           throw ConcurrencyException(
-              'Expected version $expectedVersion but found ${existingEvents.length}');
+              'Expected version $expectedVersion but found ${currentEvents.length}');
         }
-        existingEvents.addAll(events); // Append to existing list
+        currentEvents.addAll(events); // Append to existing list
+      }
+      for (final subscriber in _subscribers) {
+        for (final event in events) {
+          subscriber.onEvent(event);
+        }
       }
       return Future.value(); // Explicit return for the synchronized callback
     });
@@ -53,6 +61,11 @@ class InMemoryEventStore implements EventStore {
       }
       yield e;
     }
+  }
+
+  @override
+  void registerSubscriber(EventSubscriber subscriber) {
+    _subscribers.add(subscriber);
   }
 }
 

@@ -1,5 +1,6 @@
 import '../event.dart';
 import '../typedefs.dart';
+import 'event_subscription.dart';
 
 /// Interface for event storage
 abstract class EventStore {
@@ -34,4 +35,7 @@ abstract class EventStore {
       int? toVersion,
       String? origin,
       bool Function(Event)? filter});
+
+  /// Register a new subscriber to receive events
+  void registerSubscriber(EventSubscriber subscriber);
 }
